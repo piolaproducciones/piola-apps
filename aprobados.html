@@ -274,42 +274,31 @@
     </div>
     <div class="modal-body">
 
-      <!-- RESULTADO FINAL -->
-      <div id="resultado-box" class="resultado-box neutral" style="margin-bottom:20px;">
+      <!-- RESUMEN RÁPIDO -->
+      <div id="resultado-box" class="resultado-box neutral" style="margin-bottom:24px;">
         <div class="resultado-item">
           <div class="resultado-label">Venta total</div>
           <div class="resultado-valor" id="r-venta" style="color:var(--col-sale);">$—</div>
         </div>
         <div class="resultado-item">
-          <div class="resultado-label">Costo real total</div>
+          <div class="resultado-label">Costo real</div>
           <div class="resultado-valor" id="r-costo-real" style="color:var(--col-cost);">$—</div>
         </div>
         <div class="resultado-item">
-          <div class="resultado-label">Ganancia real</div>
+          <div class="resultado-label">Ganancia</div>
           <div class="resultado-valor" id="r-ganancia">$—</div>
         </div>
         <div class="resultado-item">
-          <div class="resultado-label">Margen real</div>
+          <div class="resultado-label">Margen</div>
           <div class="resultado-valor" id="r-margen">—%</div>
         </div>
       </div>
 
-      <!-- COMPARATIVA POR PRODUCTO -->
-      <div class="section-title" style="margin-bottom:14px;">
-        Comparativa por producto
-        <span class="frozen-badge">presupuestado vs real</span>
-      </div>
-      <div id="comparativa-section" style="margin-bottom:24px;"></div>
-
-      <!-- CARGA DE COSTOS REALES POR ÍTEM -->
-      <div class="section-title">
-        Costos reales por ítem
-        <span class="real-badge">editable</span>
-      </div>
+      <!-- CARGA DE COSTOS -->
       <div id="items-reales-container"></div>
 
       <div style="display:flex; justify-content:flex-end; margin-top:16px;">
-        <button class="btn btn-primary" onclick="guardarCostosReales()">💾 Guardar costos reales</button>
+        <button class="btn btn-primary" onclick="guardarCostosReales()">💾 Guardar</button>
       </div>
 
     </div>
@@ -448,9 +437,8 @@ function calcReal(orden) {
     const real = cr[i] || {};
     const materiales = parseFloat(real.materiales) || 0;
     const logistica  = parseFloat(real.logistica)  || 0;
-    const moObs      = parseFloat(real.moObs)      || 0; // mano de obra
-    const otros      = parseFloat(real.otros)      || 0;
-    costoTotal += materiales + logistica + moObs + otros;
+    const extras     = parseFloat(real.extras)     || 0;
+    costoTotal += materiales + logistica + extras;
   });
   const ventaTotal = orden.totalVenta || 0;
   return { costoTotal, ventaTotal, ganancia: ventaTotal - costoTotal };
@@ -459,8 +447,7 @@ function calcReal(orden) {
 function tieneAlgunCostoReal(orden) {
   const cr = orden.costosReales || {};
   return Object.values(cr).some(r =>
-    parseFloat(r.materiales) || parseFloat(r.logistica) ||
-    parseFloat(r.moObs) || parseFloat(r.otros)
+    parseFloat(r.materiales) || parseFloat(r.logistica) || parseFloat(r.extras)
   );
 }
 
@@ -566,7 +553,6 @@ function openOrden(firebaseId) {
   document.getElementById('m-estado-select').value   = o.estado || 'pendiente';
 
   renderResultado(o);
-  renderComparativa(o);
   renderItemsReales(o);
   document.getElementById('orden-modal').classList.add('open');
 }
@@ -602,168 +588,6 @@ function renderResultado(o) {
   document.getElementById('r-margen').style.color    = margenColor;
 }
 
-function renderComparativa(o) {
-  const g  = o.globals || {};
-  const cr = o.costosReales || {};
-  const cftP  = (g.cft       || 0) / 100;
-  const comP  = (g.comisionP || 0) / 100;
-  const logBase = g.logisticaBase || 0;
-  const depoP   = (g.depoP   || 0) / 100;
-
-  const $ = (v, color) => `<span style="color:${color||'var(--text)'}; font-family:var(--font-mono);">$${fmtN(v)}</span>`;
-  const pct = (v, color) => `<span style="color:${color||'var(--muted)'}; font-size:11px;">${v.toFixed(1)}%</span>`;
-
-  function diff(real, pres) {
-    if (real === null || real === undefined) return '<span style="color:var(--muted2);">—</span>';
-    const d = real - pres;
-    const cls = d > 0 ? 'diff-pos' : d < 0 ? 'diff-neg' : '';
-    return `<span class="${cls}">${d > 0 ? '+' : ''}$${fmtN(d)}</span>`;
-  }
-
-  let totalVentaPres = 0, totalCostoPres = 0, totalCostoReal = 0, totalVentaReal = 0;
-
-  const cards = (o.items || []).map((item, i) => {
-    const qc      = item.qc    || 1;
-    const extra   = item.extra || 0;
-    const cantLog = item.cantLog || 0;
-    const cUnit   = item.costoUnit || 0;
-    const margenP = (item.margen || 30) / 100;
-
-    // ---- PRESUPUESTADO ----
-    const cBase   = (qc + extra) * cUnit;            // costo base materiales
-    const logCost = cantLog * logBase;                // logística
-    const depCost = cBase * depoP;                   // depósito
-    const cTotalP = cBase + logCost + depCost;        // costo total presup
-    const cUnitP  = cTotalP / qc;                    // costo unit con todo
-    const vUnit   = margenP < 1 ? cUnitP / (1 - margenP) : cUnitP; // precio venta sin financ
-    const financ  = vUnit * cftP;                    // financiación
-    const comAg   = (vUnit + financ) * comP;         // comisión
-    const vFinal  = (vUnit + financ + comAg) * qc;   // venta final
-
-    totalVentaPres += vFinal;
-    totalCostoPres += cTotalP;
-
-    // ---- REAL ----
-    const real = cr[i] || {};
-    const rMat   = parseFloat(real.materiales) || null;
-    const rLog   = parseFloat(real.logistica)  || null;
-    const rMO    = parseFloat(real.moObs)      || null;
-    const rOtros = parseFloat(real.otros)      || null;
-    const hayReal = rMat !== null || rLog !== null || rMO !== null || rOtros !== null;
-    const rMatV   = rMat   || 0;
-    const rLogV   = rLog   || 0;
-    const rMOV    = rMO    || 0;
-    const rOtrosV = rOtros || 0;
-    const rTotal  = rMatV + rLogV + rMOV + rOtrosV;
-    const rGanancia = hayReal ? vFinal - rTotal : null;
-    const rMargen   = hayReal && vFinal > 0 ? (rGanancia / vFinal * 100) : null;
-
-    if (hayReal) { totalCostoReal += rTotal; totalVentaReal += vFinal; }
-
-    const margenPresColor = ((vFinal - cTotalP)/vFinal*100) >= 15 ? 'var(--accent)' : 'var(--warn)';
-    const margenRealColor = rMargen === null ? 'var(--muted2)' : rMargen >= 15 ? 'var(--accent)' : rMargen >= 0 ? 'var(--warn)' : 'var(--danger)';
-
-    const row = (label, presVal, realVal, presColor, realColor, isDiff) => `
-      <tr>
-        <td>${label}</td>
-        <td>${$(presVal, presColor)}</td>
-        <td>${realVal !== null ? $(realVal, realColor) : '<span style="color:var(--muted2);">—</span>'}</td>
-        <td>${isDiff ? diff(realVal, presVal) : ''}</td>
-      </tr>`;
-
-    return `
-    <div class="prod-comp">
-      <div class="prod-comp-title">
-        <div>
-          <div class="prod-comp-name">${item.desc || 'Ítem '+(i+1)}</div>
-          <div class="prod-comp-qty">Cantidad: ${qc} u.</div>
-        </div>
-        <div style="text-align:right;">
-          ${hayReal && rGanancia !== null ? `
-            <div style="font-size:11px; color:var(--muted); margin-bottom:2px;">Ganancia real</div>
-            <div style="font-family:var(--font-mono); font-size:16px; font-weight:700; color:${margenRealColor};">${rGanancia >= 0 ? '+' : ''}$${fmtN(rGanancia)} <span style="font-size:12px;">(${rMargen.toFixed(1)}%)</span></div>
-          ` : `<span style="font-size:11px; color:var(--muted2);">Sin costos reales cargados</span>`}
-        </div>
-      </div>
-      <table class="prod-comp-table">
-        <thead>
-          <tr>
-            <th style="text-align:left; width:40%;">Concepto</th>
-            <th>Presupuestado</th>
-            <th>Real</th>
-            <th>Diferencia</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${row('Costo materiales ('+qc+(extra?'+'+extra:'')+' u. × $'+fmtN(cUnit)+')', cBase, rMat, 'var(--col-cost)', 'var(--col-cost)', true)}
-          ${row('Logística ('+cantLog+' × $'+fmtN(logBase)+')', logCost, rLog, 'var(--col-cost)', 'var(--col-cost)', true)}
-          ${row('Depósito/Acopio ('+g.depoP+'%)', depCost, null, 'var(--col-cost)', '', false)}
-          ${row('Mano de obra', 0, rMO, 'var(--muted2)', 'var(--col-cost)', false)}
-          ${row('Otros / Imprevistos', 0, rOtros, 'var(--muted2)', 'var(--col-cost)', false)}
-          <tr class="subtotal">
-            <td>Costo total</td>
-            <td>${$(cTotalP, 'var(--col-cost)')}</td>
-            <td>${hayReal ? $(rTotal, 'var(--col-cost)') : '<span style="color:var(--muted2);">—</span>'}</td>
-            <td>${hayReal ? diff(rTotal, cTotalP) : ''}</td>
-          </tr>
-          <tr>
-            <td style="color:var(--muted);">Margen aplicado (${(margenP*100).toFixed(0)}%)</td>
-            <td>${$(vUnit * qc, 'var(--text)')}</td>
-            <td>—</td><td></td>
-          </tr>
-          <tr>
-            <td style="color:var(--muted);">Financiación CFT (${g.cft || 0}%)</td>
-            <td>${$(financ * qc, 'var(--col-fin)')}</td>
-            <td>—</td><td></td>
-          </tr>
-          <tr>
-            <td style="color:var(--muted);">Comisión agencia (${g.comisionP || 0}%)</td>
-            <td>${$(comAg * qc, 'var(--col-fin)')}</td>
-            <td>—</td><td></td>
-          </tr>
-          <tr class="venta-row">
-            <td style="color:var(--col-sale); font-weight:700;">Venta final (${qc} u.)</td>
-            <td>${$(vFinal, 'var(--col-sale)')}</td>
-            <td>${$(vFinal, 'var(--col-sale)')}</td>
-            <td>${pct((vFinal-cTotalP)/vFinal*100, margenPresColor)} presup. ${rMargen !== null ? '/ '+pct(rMargen, margenRealColor)+' real' : ''}</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>`;
-  }).join('');
-
-  // Totales generales
-  const totalGanPres  = totalVentaPres - totalCostoPres;
-  const totalGanReal  = totalCostoReal > 0 ? totalVentaReal - totalCostoReal : null;
-  const totalMPres    = totalVentaPres > 0 ? (totalGanPres / totalVentaPres * 100) : 0;
-  const totalMReal    = totalGanReal !== null && totalVentaReal > 0 ? (totalGanReal / totalVentaReal * 100) : null;
-  const tMRealColor   = totalMReal === null ? 'var(--muted2)' : totalMReal >= 15 ? 'var(--accent)' : totalMReal >= 0 ? 'var(--warn)' : 'var(--danger)';
-
-  const totales = `
-    <div style="background:var(--surface3); border:1px solid var(--border); border-radius:8px; padding:16px 20px; display:grid; grid-template-columns:repeat(4,1fr); gap:16px; text-align:center;">
-      <div>
-        <div style="font-size:9px; font-weight:700; letter-spacing:0.8px; text-transform:uppercase; color:var(--muted); margin-bottom:6px;">Venta total</div>
-        <div style="font-family:var(--font-mono); font-size:18px; font-weight:700; color:var(--col-sale);">$${fmtN(totalVentaPres)}</div>
-      </div>
-      <div>
-        <div style="font-size:9px; font-weight:700; letter-spacing:0.8px; text-transform:uppercase; color:var(--muted); margin-bottom:6px;">Costo presup.</div>
-        <div style="font-family:var(--font-mono); font-size:18px; font-weight:700; color:var(--col-cost);">$${fmtN(totalCostoPres)}</div>
-        <div style="font-size:11px; color:var(--muted); margin-top:2px; font-family:var(--font-mono);">Margen: ${totalMPres.toFixed(1)}%</div>
-      </div>
-      <div>
-        <div style="font-size:9px; font-weight:700; letter-spacing:0.8px; text-transform:uppercase; color:var(--muted); margin-bottom:6px;">Costo real</div>
-        <div style="font-family:var(--font-mono); font-size:18px; font-weight:700; color:${totalCostoReal > 0 ? 'var(--col-cost)' : 'var(--muted2)'};">${totalCostoReal > 0 ? '$'+fmtN(totalCostoReal) : '—'}</div>
-        ${totalMReal !== null ? `<div style="font-size:11px; color:${tMRealColor}; margin-top:2px; font-family:var(--font-mono);">Margen: ${totalMReal.toFixed(1)}%</div>` : ''}
-      </div>
-      <div>
-        <div style="font-size:9px; font-weight:700; letter-spacing:0.8px; text-transform:uppercase; color:var(--muted); margin-bottom:6px;">Ganancia real</div>
-        <div style="font-family:var(--font-mono); font-size:18px; font-weight:700; color:${tMRealColor};">${totalGanReal !== null ? (totalGanReal >= 0 ? '+' : '')+'$'+fmtN(totalGanReal) : '—'}</div>
-      </div>
-    </div>`;
-
-  document.getElementById('comparativa-section').innerHTML = cards + totales;
-}
-
 function renderItemsReales(o) {
   const cr = o.costosReales || {};
   const container = document.getElementById('items-reales-container');
@@ -776,11 +600,7 @@ function renderItemsReales(o) {
       <div class="item-real-header">
         <div>
           <div class="item-real-nombre">${item.desc || 'Ítem ' + (i+1)}</div>
-          <div class="item-real-cant">Cantidad: ${item.qc} u. · Costo presup. unit.: $${fmtN(item.costoUnit)} · Venta presup.: $${fmtN(pres.ventaFinal)}</div>
-        </div>
-        <div style="text-align:right;">
-          <div style="font-size:9px; text-transform:uppercase; letter-spacing:0.6px; color:var(--muted); margin-bottom:2px;">Costo presup. total</div>
-          <div style="font-family:var(--font-mono); font-size:15px; color:var(--col-cost);">$${fmtN(pres.costoTotalItem)}</div>
+          <div class="item-real-cant">Cant: ${item.qc} u. · Presup: $${fmtN(pres.costoTotalItem)} costo / $${fmtN(pres.ventaFinal)} venta</div>
         </div>
       </div>
       <div class="costos-grid">
@@ -793,12 +613,12 @@ function renderItemsReales(o) {
           <input type="number" class="costo-input" id="real-${i}-logistica" value="${real.logistica||''}" placeholder="0" min="0" step="100" oninput="previewReal()">
         </div>
         <div class="costo-field">
-          <label>Mano de obra $</label>
-          <input type="number" class="costo-input" id="real-${i}-moObs" value="${real.moObs||''}" placeholder="0" min="0" step="100" oninput="previewReal()">
+          <label>Extras $</label>
+          <input type="number" class="costo-input" id="real-${i}-extras" value="${real.extras||''}" placeholder="0" min="0" step="100" oninput="previewReal()">
         </div>
-        <div class="costo-field">
-          <label>Otros / Imprevistos $</label>
-          <input type="number" class="costo-input" id="real-${i}-otros" value="${real.otros||''}" placeholder="0" min="0" step="100" oninput="previewReal()">
+        <div class="costo-field" style="grid-column: 1 / -1;">
+          <label>Observaciones de extras</label>
+          <input type="text" class="costo-input" id="real-${i}-obsExtras" value="${real.obsExtras||''}" placeholder="¿Para qué fueron los extras?">
         </div>
       </div>
     </div>`;
@@ -834,7 +654,6 @@ function previewReal() {
   const cr = collectCostosReales(o);
   const tempOrden = { ...o, costosReales: cr };
   renderResultado(tempOrden);
-  renderComparativa(tempOrden);
 }
 
 function collectCostosReales(o) {
@@ -843,8 +662,8 @@ function collectCostosReales(o) {
     cr[i] = {
       materiales: parseFloat(document.getElementById(`real-${i}-materiales`)?.value) || 0,
       logistica:  parseFloat(document.getElementById(`real-${i}-logistica`)?.value)  || 0,
-      moObs:      parseFloat(document.getElementById(`real-${i}-moObs`)?.value)      || 0,
-      otros:      parseFloat(document.getElementById(`real-${i}-otros`)?.value)       || 0,
+      extras:     parseFloat(document.getElementById(`real-${i}-extras`)?.value)     || 0,
+      obsExtras:  document.getElementById(`real-${i}-obsExtras`)?.value || '',
     };
   });
   return cr;
@@ -859,10 +678,7 @@ async function guardarCostosReales() {
       costosReales: cr,
       actualizadoEn: new Date().toISOString(),
     });
-    toast('✓ Costos reales guardados', 'success');
-    // Actualizar la comparativa con los nuevos datos
-    const updatedOrden = { ...o, costosReales: cr };
-    renderComparativa(updatedOrden);
+    toast('✓ Costos guardados', 'success');
   } catch(e) { toast('Error: ' + e.message, ''); }
 }
 
