@@ -285,7 +285,7 @@
 <!-- FIREBASE -->
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import { getFirestore, collection, doc, onSnapshot, updateDoc, addDoc, query, orderBy } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import { getFirestore, collection, doc, onSnapshot, updateDoc, deleteDoc, query, orderBy } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
 const firebaseConfig = {
   apiKey: "AIzaSyAQNT8-8Q5v7Tfn9MIy530RSHdZj6Am390",
@@ -302,7 +302,7 @@ const db  = getFirestore(app);
 window._db          = db;
 window._fbDoc       = doc;
 window._fbUpdateDoc = updateDoc;
-window._fbAddDoc    = addDoc;
+window._fbDeleteDoc = deleteDoc;
 window._fbCollection= collection;
 
 const fbStatus = document.getElementById('fb-status');
@@ -449,11 +449,10 @@ function renderFila(q) {
   const est = q.estado || 'borrador';
   const acciones = [];
 
-  if (est === 'borrador')   acciones.push(`<button class="btn-estado enviada"   onclick="event.stopPropagation(); cambiarEstado('${q.firebaseId}','enviada')">→ Enviar</button>`);
-  if (est === 'enviada')    acciones.push(`<button class="btn-estado aprobada"  onclick="event.stopPropagation(); cambiarEstado('${q.firebaseId}','aprobada')">✓ Aprobar</button>`);
-  if (est === 'enviada')    acciones.push(`<button class="btn-estado rechazada" onclick="event.stopPropagation(); cambiarEstado('${q.firebaseId}','rechazada')">✕ Rechazar</button>`);
-  if (est === 'rechazada')  acciones.push(`<button class="btn-estado enviada"   onclick="event.stopPropagation(); cambiarEstado('${q.firebaseId}','enviada')">↩ Reenviar</button>`);
-  if (est === 'aprobada')   acciones.push(`<button class="btn-estado rechazada" onclick="event.stopPropagation(); if(confirm('¿Revertir aprobación? Esto también afectará la orden de producción.')) cambiarEstado('${q.firebaseId}','enviada')" style="font-size:9px;">↩ Revertir</button>`);
+  if (est === 'borrador')  acciones.push(`<button class="btn-estado enviada"   onclick="event.stopPropagation(); cambiarEstado('${q.firebaseId}','enviada')">→ Enviar</button>`);
+  if (est === 'enviada')   acciones.push(`<button class="btn-estado aprobada"  onclick="event.stopPropagation(); cambiarEstado('${q.firebaseId}','aprobada')">✓ Aprobar</button>`);
+  if (est === 'enviada')   acciones.push(`<button class="btn-estado rechazada" onclick="event.stopPropagation(); cambiarEstado('${q.firebaseId}','rechazada')">✕ Rechazar</button>`);
+  if (est === 'rechazada') acciones.push(`<button class="btn-estado enviada"   onclick="event.stopPropagation(); cambiarEstado('${q.firebaseId}','enviada')">↩ Reenviar</button>`);
 
   const estadoLabels = { borrador:'Borrador', enviada:'Enviada', aprobada:'Aprobada', rechazada:'Rechazada' };
   return `<tr onclick="openDetalle('${q.firebaseId}')" style="cursor:pointer;">
@@ -470,55 +469,25 @@ function renderFila(q) {
     <td onclick="event.stopPropagation()" style="white-space:nowrap;">
       <div style="display:flex; gap:4px; justify-content:flex-end; align-items:center;">
         ${acciones.join('')}
-        <button class="del-btn" title="Ver detalle" onclick="openDetalle('${q.firebaseId}')">👁</button>
+        <button class="del-btn" title="Ver detalle" onclick="event.stopPropagation(); openDetalle('${q.firebaseId}')">👁</button>
+        <button class="del-btn" title="Eliminar" onclick="event.stopPropagation(); borrarCotizacion('${q.firebaseId}')" style="color:rgba(255,87,87,0.4);">🗑</button>
       </div>
     </td>
   </tr>`;
 }
 
 async function cambiarEstado(firebaseId, nuevoEstado) {
-  const q = window._allQuotes.find(x => x.firebaseId === firebaseId);
-  if (!q) return;
-
   try {
-    if (nuevoEstado === 'aprobada' && !q.ordenId) {
-      // Crear orden de producción
-      const ordenRef = await window._fbAddDoc(window._fbCollection(window._db, 'ordenes'), {
-        cotizacionId:  q.firebaseId,
-        cotizacionNum: q.id,
-        cliente:       q.cliente,
-        proyecto:      q.proyecto,
-        vendedor:      q.vendedor || '—',
-        fecha:         q.fecha,
-        items:         q.items   || [],
-        globals:       q.globals || {},
-        totalVenta:    q.totalVenta || 0,
-        costosReales:  {},
-        estado:        'pendiente',
-        creadoEn:      new Date().toISOString(),
-      });
-      await window._fbUpdateDoc(window._fbDoc(window._db, 'cotizaciones', firebaseId), {
-        estado: 'aprobada',
-        ordenId: ordenRef.id
-      });
-      toast('✓ Aprobada — orden de producción creada', 'success');
+    await window._fbUpdateDoc(window._fbDoc(window._db, 'cotizaciones', firebaseId), { estado: nuevoEstado });
+    toast('Estado actualizado → ' + nuevoEstado, 'success');
+  } catch(e) { toast('Error: ' + e.message, ''); }
+}
 
-    } else if (nuevoEstado === 'enviada' && q.estado === 'aprobada' && q.ordenId) {
-      // Revertir — marcar la orden como revertida y limpiar ordenId
-      await window._fbUpdateDoc(window._fbDoc(window._db, 'ordenes', q.ordenId), {
-        estado: 'revertida',
-        revertidaEn: new Date().toISOString()
-      });
-      await window._fbUpdateDoc(window._fbDoc(window._db, 'cotizaciones', firebaseId), {
-        estado: 'enviada',
-        ordenId: null
-      });
-      toast('↩ Revertida a enviada', 'success');
-
-    } else {
-      await window._fbUpdateDoc(window._fbDoc(window._db, 'cotizaciones', firebaseId), { estado: nuevoEstado });
-      toast('Estado actualizado → ' + nuevoEstado, 'success');
-    }
+async function borrarCotizacion(firebaseId) {
+  if (!confirm('¿Borrar esta cotización? Esta acción no se puede deshacer.')) return;
+  try {
+    await window._fbDeleteDoc(window._fbDoc(window._db, 'cotizaciones', firebaseId));
+    toast('Cotización eliminada', 'success');
   } catch(e) { toast('Error: ' + e.message, ''); }
 }
 
