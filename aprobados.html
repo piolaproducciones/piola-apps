@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Aprobados Piola</title>
-<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,700;0,800;1,700;1,800&family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root {
     --bg: #0c0c0f;
@@ -12,25 +12,25 @@
     --surface2: #1c1c22;
     --surface3: #242430;
     --border: #2a2a38;
-    --accent: #e8c800;
+    --accent: #c8ff57;
     --danger: #ff5757;
     --warn: #ffb857;
     --text: #e8e8f0;
     --muted: #6b6b80;
     --muted2: #4a4a5a;
     --col-cost: #ff8fa3;
-    --col-sale: #e8c800;
+    --col-sale: #c8ff57;
     --col-fin: #57c8ff;
     --font-body: 'Syne', sans-serif;
     --font-mono: 'DM Mono', monospace;
-    --font-display: 'Barlow Condensed', sans-serif;
+    --font-display: 'DM Serif Display', serif;
     --radius: 10px;
   }
   :root[data-theme="light"] {
     --bg: #f0f0f5; --surface: #ffffff; --surface2: #f4f4f8; --surface3: #eaeaf0;
-    --border: #dcdce8; --accent: #b89a00; --danger: #cc2200; --warn: #cc7700;
+    --border: #dcdce8; --accent: #4a8c00; --danger: #cc2200; --warn: #cc7700;
     --text: #1a1a2e; --muted: #70708a; --muted2: #a0a0b8;
-    --col-cost: #cc3355; --col-fin: #0077aa; --col-sale: #b89a00;
+    --col-cost: #cc3355; --col-fin: #0077aa; --col-sale: #4a8c00;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { background: var(--bg); color: var(--text); font-family: var(--font-body); font-size: 13px; min-height: 100vh; }
@@ -64,7 +64,7 @@
   .btn-primary:hover { filter: brightness(1.1); }
   .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
   .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
-  .btn-success { background: rgba(232,200,0,0.15); color: var(--accent); border: 1px solid rgba(232,200,0,0.3); }
+  .btn-success { background: rgba(200,255,87,0.15); color: var(--accent); border: 1px solid rgba(200,255,87,0.3); }
   .del-btn { background: none; border: none; color: var(--muted2); cursor: pointer; padding: 4px 8px; border-radius: 4px; font-size: 16px; transition: all 0.2s; }
   .del-btn:hover { color: var(--danger); background: rgba(255,87,87,0.1); }
 
@@ -80,7 +80,7 @@
   .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 10px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; font-family: var(--font-mono); white-space: nowrap; }
   .badge-pendiente   { background: rgba(255,184,87,0.15);  color: var(--warn);     border: 1px solid rgba(255,184,87,0.3); }
   .badge-en-proceso  { background: rgba(87,200,255,0.15);  color: var(--col-fin);  border: 1px solid rgba(87,200,255,0.3); }
-  .badge-completada  { background: rgba(232,200,0,0.15);  color: var(--accent);   border: 1px solid rgba(232,200,0,0.3); }
+  .badge-completada  { background: rgba(200,255,87,0.15);  color: var(--accent);   border: 1px solid rgba(200,255,87,0.3); }
 
   /* MARGEN INDICATOR */
   .margen-bar { height: 4px; border-radius: 2px; background: var(--surface3); margin-top: 4px; overflow: hidden; }
@@ -96,7 +96,7 @@
   /* SECCIÓN CONGELADA vs REAL */
   .section-title { font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 14px; padding-bottom: 8px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; }
   .frozen-badge { background: rgba(107,107,128,0.2); color: var(--muted); border: 1px solid rgba(107,107,128,0.3); border-radius: 4px; padding: 2px 6px; font-size: 9px; letter-spacing: 0.5px; }
-  .real-badge { background: rgba(232,200,0,0.1); color: var(--accent); border: 1px solid rgba(232,200,0,0.2); border-radius: 4px; padding: 2px 6px; font-size: 9px; letter-spacing: 0.5px; }
+  .real-badge { background: rgba(200,255,87,0.1); color: var(--accent); border: 1px solid rgba(200,255,87,0.2); border-radius: 4px; padding: 2px 6px; font-size: 9px; letter-spacing: 0.5px; }
 
   /* ITEMS REALES */
   .item-real-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 10px; }
@@ -121,13 +121,13 @@
   .prod-comp-table td:first-child { text-align: left; font-family: var(--font-body); color: var(--muted); font-size: 12px; }
   .prod-comp-table tr:last-child td { border-bottom: none; }
   .prod-comp-table tr.subtotal td { background: rgba(42,42,56,0.3); font-weight: 700; }
-  .prod-comp-table tr.venta-row td { background: rgba(232,200,0,0.04); font-weight: 700; }
+  .prod-comp-table tr.venta-row td { background: rgba(200,255,87,0.04); font-weight: 700; }
   .diff-pos { color: var(--danger); }
   .diff-neg { color: var(--accent); }
 
   /* RESULTADO FINAL */
   .resultado-box { border-radius: 10px; padding: 20px 24px; margin-bottom: 20px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
-  .resultado-box.ganancia { background: rgba(232,200,0,0.06); border: 1px solid rgba(232,200,0,0.2); }
+  .resultado-box.ganancia { background: rgba(200,255,87,0.06); border: 1px solid rgba(200,255,87,0.2); }
   .resultado-box.perdida  { background: rgba(255,87,87,0.06);   border: 1px solid rgba(255,87,87,0.2); }
   .resultado-box.neutral  { background: rgba(107,107,128,0.08); border: 1px solid rgba(107,107,128,0.2); }
   .resultado-item { text-align: center; }
@@ -143,7 +143,7 @@
 
   .toast { position: fixed; bottom: 24px; right: 24px; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 20px; font-size: 13px; z-index: 999; transform: translateY(80px); opacity: 0; transition: all 0.3s; max-width: 320px; }
   .toast.show { transform: translateY(0); opacity: 1; }
-  .toast.success { border-color: rgba(232,200,0,0.4); }
+  .toast.success { border-color: rgba(200,255,87,0.4); }
 
   .filters { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 
