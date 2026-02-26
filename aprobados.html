@@ -310,7 +310,7 @@
 <!-- FIREBASE -->
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import { getFirestore, collection, doc, onSnapshot, addDoc, updateDoc } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import { getFirestore, collection, doc, onSnapshot, updateDoc } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
 const firebaseConfig = {
   apiKey: "AIzaSyAQNT8-8Q5v7Tfn9MIy530RSHdZj6Am390",
@@ -331,34 +331,8 @@ window._fbCollection= collection;
 
 const fbStatus = document.getElementById('fb-status');
 
-// Escuchar TODAS las cotizaciones y filtrar aprobadas en cliente (evita necesidad de índice)
-onSnapshot(
-  collection(db, 'cotizaciones'),
-  async snap => {
-    for (const d of snap.docs) {
-      const cot = { firebaseId: d.id, ...d.data() };
-      if (cot.estado === 'aprobada' && !cot.ordenId) {
-        const ordenRef = await addDoc(collection(db, 'ordenes'), {
-          cotizacionId:  cot.firebaseId,
-          cotizacionNum: cot.id,
-          cliente:       cot.cliente,
-          proyecto:      cot.proyecto,
-          vendedor:      cot.vendedor || '—',
-          fecha:         cot.fecha,
-          items:         cot.items   || [],
-          globals:       cot.globals || {},
-          totalVenta:    cot.totalVenta || 0,
-          costosReales:  {},
-          estado:        'pendiente',
-          creadoEn:      new Date().toISOString(),
-        });
-        await updateDoc(doc(db, 'cotizaciones', cot.firebaseId), { ordenId: ordenRef.id });
-      }
-    }
-  }
-);
-
-// Escuchar órdenes — sin orderBy para evitar índice compuesto, ordenamos en cliente
+// Las órdenes se crean desde historial.html al aprobar — solo escuchamos órdenes aquí
+// Escuchar órdenes en tiempo real
 onSnapshot(
   collection(db, 'ordenes'),
   snap => {
@@ -476,6 +450,7 @@ function updateMetrics() {
 function applyFilters() {
   const search = document.getElementById('f-search')?.value.toLowerCase() || '';
   const all    = Object.values(window._ordenes)
+    .filter(o => o.estado !== 'revertida')  // ocultar órdenes revertidas
     .sort((a, b) => (b.creadoEn || '').localeCompare(a.creadoEn || ''));
 
   const activas     = all.filter(o => o.estado !== 'completada' &&

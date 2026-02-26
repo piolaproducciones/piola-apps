@@ -285,7 +285,7 @@
 <!-- FIREBASE -->
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import { getFirestore, collection, doc, onSnapshot, updateDoc, query, orderBy } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import { getFirestore, collection, doc, onSnapshot, updateDoc, addDoc, query, orderBy } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
 const firebaseConfig = {
   apiKey: "AIzaSyAQNT8-8Q5v7Tfn9MIy530RSHdZj6Am390",
@@ -302,6 +302,8 @@ const db  = getFirestore(app);
 window._db          = db;
 window._fbDoc       = doc;
 window._fbUpdateDoc = updateDoc;
+window._fbAddDoc    = addDoc;
+window._fbCollection= collection;
 
 const fbStatus = document.getElementById('fb-status');
 
@@ -475,9 +477,48 @@ function renderFila(q) {
 }
 
 async function cambiarEstado(firebaseId, nuevoEstado) {
+  const q = window._allQuotes.find(x => x.firebaseId === firebaseId);
+  if (!q) return;
+
   try {
-    await window._fbUpdateDoc(window._fbDoc(window._db, 'cotizaciones', firebaseId), { estado: nuevoEstado });
-    toast('Estado actualizado → ' + nuevoEstado, 'success');
+    if (nuevoEstado === 'aprobada' && !q.ordenId) {
+      // Crear orden de producción
+      const ordenRef = await window._fbAddDoc(window._fbCollection(window._db, 'ordenes'), {
+        cotizacionId:  q.firebaseId,
+        cotizacionNum: q.id,
+        cliente:       q.cliente,
+        proyecto:      q.proyecto,
+        vendedor:      q.vendedor || '—',
+        fecha:         q.fecha,
+        items:         q.items   || [],
+        globals:       q.globals || {},
+        totalVenta:    q.totalVenta || 0,
+        costosReales:  {},
+        estado:        'pendiente',
+        creadoEn:      new Date().toISOString(),
+      });
+      await window._fbUpdateDoc(window._fbDoc(window._db, 'cotizaciones', firebaseId), {
+        estado: 'aprobada',
+        ordenId: ordenRef.id
+      });
+      toast('✓ Aprobada — orden de producción creada', 'success');
+
+    } else if (nuevoEstado === 'enviada' && q.estado === 'aprobada' && q.ordenId) {
+      // Revertir — marcar la orden como revertida y limpiar ordenId
+      await window._fbUpdateDoc(window._fbDoc(window._db, 'ordenes', q.ordenId), {
+        estado: 'revertida',
+        revertidaEn: new Date().toISOString()
+      });
+      await window._fbUpdateDoc(window._fbDoc(window._db, 'cotizaciones', firebaseId), {
+        estado: 'enviada',
+        ordenId: null
+      });
+      toast('↩ Revertida a enviada', 'success');
+
+    } else {
+      await window._fbUpdateDoc(window._fbDoc(window._db, 'cotizaciones', firebaseId), { estado: nuevoEstado });
+      toast('Estado actualizado → ' + nuevoEstado, 'success');
+    }
   } catch(e) { toast('Error: ' + e.message, ''); }
 }
 
