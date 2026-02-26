@@ -553,10 +553,10 @@
   </div>
   <div class="topbar-actions">
     <div class="dolar-badge" onclick="fetchDolar()" title="Fuente: dolarito.ar — click para actualizar">
-      <span style="color:var(--muted); font-size:9px; letter-spacing:0.5px; margin-right:6px;">Valor del dólar</span>
+      <a href="https://www.dolarito.ar" target="_blank" style="color:var(--muted); text-decoration:none; font-size:9px; letter-spacing:0.5px; margin-right:6px;" onclick="event.stopPropagation()">dolarito.ar</a>
       💵 CCL: <span class="val" id="dolar-ccl">—</span>
       &nbsp;|&nbsp; Oficial: <span class="val" id="dolar-of">—</span>
-      <span style="font-size:9px; color:var(--muted2); margin-left:6px;" id="dolar-time">↻</span>
+      <span style="font-size:9px; color:var(--muted2); margin-left:6px;" id="dolar-time">↻ actualizar</span>
     </div>
     <button id="theme-btn" onclick="toggleTheme()" class="btn btn-secondary">☀️ Claro</button>
     <button class="btn btn-secondary" onclick="nuevaCotizacion()" style="border-color:rgba(200,255,87,0.2); color:var(--muted);">+ Nueva</button>
@@ -579,59 +579,60 @@
 <!-- ===================== EDITOR VIEW ===================== -->
 <div class="view active" id="view-editor">
 
-  <!-- CABECERA — sin título, campos en línea -->
-  <div class="panel mb-16" style="border-top:3px solid var(--accent);">
-    <div class="panel-body" style="padding:16px 20px;">
-      <div style="display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;">
-        <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; flex:1;">
-          <div style="display:flex; flex-direction:column; gap:3px;">
-            <label style="font-size:9px; font-weight:700; letter-spacing:0.6px; text-transform:uppercase; color:var(--muted);">Fecha</label>
-            <input type="date" class="form-control" id="f-fecha" style="width:140px;">
-          </div>
-          <div style="display:flex; flex-direction:column; gap:3px;">
-            <label style="font-size:9px; font-weight:700; letter-spacing:0.6px; text-transform:uppercase; color:var(--muted);">Cliente</label>
-            <input type="text" class="form-control" id="f-cliente" placeholder="Cliente" style="width:160px;">
-          </div>
-          <div style="display:flex; flex-direction:column; gap:3px;">
-            <label style="font-size:9px; font-weight:700; letter-spacing:0.6px; text-transform:uppercase; color:var(--muted);">Proyecto</label>
-            <input type="text" class="form-control" id="f-proyecto" placeholder="Proyecto" style="width:180px;">
-          </div>
-          <div style="display:flex; flex-direction:column; gap:3px;">
-            <label style="font-size:9px; font-weight:700; letter-spacing:0.6px; text-transform:uppercase; color:var(--muted);">Marca</label>
-            <input type="text" class="form-control" id="f-marca" placeholder="Marca" style="width:130px;">
-          </div>
-          <div style="display:flex; flex-direction:column; gap:3px;">
-            <label style="font-size:9px; font-weight:700; letter-spacing:0.6px; text-transform:uppercase; color:var(--muted);">Contacto</label>
-            <input type="text" class="form-control" id="f-contacto" placeholder="Nombre" style="width:140px;">
-          </div>
-          <div style="display:flex; flex-direction:column; gap:3px;">
-            <label style="font-size:9px; font-weight:700; letter-spacing:0.6px; text-transform:uppercase; color:var(--muted);">Email</label>
-            <input type="email" class="form-control" id="f-email" placeholder="email@..." style="width:170px;">
-          </div>
-          <div style="display:flex; flex-direction:column; gap:3px;">
-            <label style="font-size:9px; font-weight:700; letter-spacing:0.6px; text-transform:uppercase; color:var(--muted);">Vendedor</label>
-            <input type="text" class="form-control" id="f-vendedor" placeholder="Vendedor" style="width:130px;">
-          </div>
-          <div style="display:flex; flex-direction:column; gap:3px;">
-            <label style="font-size:9px; font-weight:700; letter-spacing:0.6px; text-transform:uppercase; color:var(--muted);">Entrega</label>
-            <input type="date" class="form-control" id="f-entrega" style="width:140px;">
-          </div>
-          <div style="display:flex; flex-direction:column; gap:3px;">
-            <label style="font-size:9px; font-weight:700; letter-spacing:0.6px; text-transform:uppercase; color:var(--muted);">Condición</label>
-            <select class="form-control" id="f-condicion" onchange="recalcAll()" style="width:155px;">
-              <option value="0">Contado (0%)</option>
-              <option value="2.88">30 días (2.88%)</option>
-              <option value="5.83">60 días (5.83%)</option>
-              <option value="8.84">90 días (8.84%)</option>
-              <option value="12.18">120 días (12.18%)</option>
-              <option value="15.61">150 días (15.61%)</option>
-              <option value="19.15">180 días (19.15%)</option>
-              <option value="26.56">270 días (26.56%)</option>
-              <option value="35.00">365 días (35.00%)</option>
-            </select>
-          </div>
+  <!-- CABECERA -->
+  <div class="panel mb-16">
+    <div class="panel-header">
+      <span class="panel-title">Cabecera del Proyecto</span>
+      <span class="id-badge" id="display-id">COT-0001</span>
+    </div>
+    <div class="panel-body">
+      <div class="form-grid" style="grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));">
+        <div class="form-group">
+          <label>Fecha</label>
+          <input type="date" class="form-control" id="f-fecha">
         </div>
-        <span class="id-badge" id="display-id" style="flex-shrink:0;">COT-0001</span>
+        <div class="form-group">
+          <label>Cliente</label>
+          <input type="text" class="form-control" id="f-cliente" placeholder="Nombre del cliente">
+        </div>
+        <div class="form-group">
+          <label>Proyecto</label>
+          <input type="text" class="form-control" id="f-proyecto" placeholder="Nombre del proyecto">
+        </div>
+        <div class="form-group">
+          <label>Marca</label>
+          <input type="text" class="form-control" id="f-marca" placeholder="Marca">
+        </div>
+        <div class="form-group">
+          <label>Contacto</label>
+          <input type="text" class="form-control" id="f-contacto" placeholder="Nombre y apellido">
+        </div>
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" class="form-control" id="f-email" placeholder="email@empresa.com">
+        </div>
+        <div class="form-group">
+          <label>Vendedor</label>
+          <input type="text" class="form-control" id="f-vendedor" placeholder="Vendedor responsable">
+        </div>
+        <div class="form-group">
+          <label>Entrega</label>
+          <input type="date" class="form-control" id="f-entrega">
+        </div>
+        <div class="form-group">
+          <label>Condición Comercial</label>
+          <select class="form-control" id="f-condicion" onchange="recalcAll()">
+            <option value="0">Contado (0%)</option>
+            <option value="2.88">30 días (2.88%)</option>
+            <option value="5.83">60 días (5.83%)</option>
+            <option value="8.84">90 días (8.84%)</option>
+            <option value="12.18">120 días (12.18%)</option>
+            <option value="15.61">150 días (15.61%)</option>
+            <option value="19.15">180 días (19.15%)</option>
+            <option value="26.56">270 días (26.56%)</option>
+            <option value="35.00">365 días (35.00%)</option>
+          </select>
+        </div>
       </div>
     </div>
   </div>
@@ -685,15 +686,19 @@
               <th>#</th>
               <th>Proveedor</th>
               <th>Descripción</th>
-              <th title="Cantidad para el cliente">Cant.</th>
-              <th title="Unidades extra internas (no visibles al cliente)">Extra</th>
+              <th>Cant. Cliente</th>
+              <th title="Unidades extra internas (ocultas al cliente)">Extra ±</th>
               <th>Costo Unit.</th>
-              <th title="Cantidad envíos logística">Log.</th>
-              <th class="calc" style="color:var(--col-cost)" title="Costo total + logística + depósito">C.Total</th>
+              <th>Cant. Log.</th>
+              <th class="calc" style="color:var(--col-cost)">Costo Total</th>
+              <th class="calc" style="color:var(--col-cost)">+ Log.</th>
+              <th class="calc" style="color:var(--col-cost)">+ Depo</th>
+              <th class="calc" style="color:var(--col-cost)">C.Unit.Final</th>
+              <th class="calc" style="color:var(--col-cost)">C.Tot.Final</th>
               <th class="calc" style="color:var(--col-sale)">Margen %</th>
               <th class="calc" style="color:var(--col-sale)">Venta Unit.</th>
               <th class="calc" style="color:var(--col-fin)">Financ.</th>
-              <th class="calc" style="color:var(--col-fin)">Com.</th>
+              <th class="calc" style="color:var(--col-fin)">Com.Ag.</th>
               <th class="calc" style="color:var(--col-sale)">Venta Final</th>
               <th></th>
             </tr>
@@ -1126,8 +1131,12 @@ function renderTable() {
         </div>
       </td>
       <td style="width:70px;" title="Cantidad de envíos de logística"><input type="number" value="${item.cantLog}" min="0" step="1" onchange="updateItem(${item.id},'cantLog',parseFloat(this.value)||0)"></td>
-      <td class="calc-cell cost" title="Costo mat: $${fmtN(calc.costoTotal)} | Log: $${fmtN(calc.logistica)} | Depo: $${fmtN(calc.depo)}">$${fmtN(calc.costoTotalFinal)}</td>
-      <td style="width:80px;">
+      <td class="calc-cell cost">$${fmtN(calc.costoTotal)}</td>
+      <td class="calc-cell cost">$${fmtN(calc.logistica)}</td>
+      <td class="calc-cell cost">$${fmtN(calc.depo)}</td>
+      <td class="calc-cell cost">$${fmtN(calc.costoUnitFinal)}</td>
+      <td class="calc-cell cost">$${fmtN(calc.costoTotalFinal)}</td>
+      <td style="width:70px;">
         <div style="position:relative;">
           <input type="number" value="${item.margen}" min="0" max="99" step="0.5" style="padding-right:18px; color:var(--col-sale); font-family:var(--font-mono);" onchange="updateItem(${item.id},'margen',parseFloat(this.value)||0)">
           <span style="position:absolute; right:7px; top:50%; transform:translateY(-50%); color:var(--col-sale); font-family:var(--font-mono); font-size:11px; pointer-events:none;">%</span>

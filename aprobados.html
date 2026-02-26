@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" data-theme="dark">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Órdenes de Producción · Piola</title>
+<title>Aprobados Piola</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -25,6 +25,12 @@
     --font-mono: 'DM Mono', monospace;
     --font-display: 'DM Serif Display', serif;
     --radius: 10px;
+  }
+  :root[data-theme="light"] {
+    --bg: #f0f0f5; --surface: #ffffff; --surface2: #f4f4f8; --surface3: #eaeaf0;
+    --border: #dcdce8; --accent: #4a8c00; --danger: #cc2200; --warn: #cc7700;
+    --text: #1a1a2e; --muted: #70708a; --muted2: #a0a0b8;
+    --col-cost: #cc3355; --col-fin: #0077aa; --col-sale: #4a8c00;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { background: var(--bg); color: var(--text); font-family: var(--font-body); font-size: 13px; min-height: 100vh; }
@@ -153,8 +159,8 @@
 
 <div class="topbar">
   <div class="logo">
-    Producción <span>·</span> Piola
-    <span class="role">Órdenes</span>
+    Aprobados <span>·</span> Piola
+    <span class="role">Aprobados</span>
   </div>
   <div style="display:flex; align-items:center; gap:10px;">
     <a href="index.html" style="background:var(--surface2); border:1px solid var(--border); color:var(--muted); border-radius:8px; padding:6px 12px; font-size:12px; font-weight:600; text-decoration:none; font-family:var(--font-body);">← Inicio</a>
@@ -186,18 +192,12 @@
     </div>
   </div>
 
-  <!-- LISTA ÓRDENES -->
-  <div class="panel">
+  <!-- ÓRDENES ACTIVAS (pendiente + en proceso) -->
+  <div class="panel" style="margin-bottom:16px;">
     <div class="panel-header">
-      <span class="panel-title">Órdenes de Producción</span>
+      <span class="panel-title">Órdenes en curso</span>
       <div class="filters">
         <input type="text" class="form-control" id="f-search" placeholder="🔍 Buscar..." oninput="applyFilters()" style="width:200px;">
-        <select class="form-control" id="f-estado" onchange="applyFilters()" style="width:150px;">
-          <option value="">Todos los estados</option>
-          <option value="pendiente">Pendiente</option>
-          <option value="en-proceso">En proceso</option>
-          <option value="completada">Completada</option>
-        </select>
       </div>
     </div>
     <div class="panel-body" style="padding:0;">
@@ -205,10 +205,7 @@
       <div class="table-wrapper" id="table-wrapper" style="display:none;">
         <table>
           <thead><tr>
-            <th>Orden</th>
-            <th>Cliente</th>
-            <th>Proyecto</th>
-            <th>Cotización</th>
+            <th>Orden</th><th>Cliente</th><th>Proyecto</th><th>Cotización</th>
             <th style="text-align:right; color:var(--col-sale);">Venta</th>
             <th style="text-align:right; color:var(--col-cost);">Costo presup.</th>
             <th style="text-align:right;">Costo real</th>
@@ -223,6 +220,33 @@
         <div class="icon">🏭</div>
         No hay órdenes activas.<br>
         <span style="font-size:11px; color:var(--muted2);">Las cotizaciones aprobadas en el Historial aparecen acá automáticamente.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ÓRDENES COMPLETADAS -->
+  <div class="panel">
+    <div class="panel-header">
+      <span class="panel-title">✅ Completadas</span>
+      <span id="completadas-count" style="font-size:11px; color:var(--muted); font-family:var(--font-mono);"></span>
+    </div>
+    <div class="panel-body" style="padding:0;">
+      <div class="table-wrapper">
+        <table>
+          <thead><tr>
+            <th>Orden</th><th>Cliente</th><th>Proyecto</th><th>Cotización</th>
+            <th style="text-align:right; color:var(--col-sale);">Venta</th>
+            <th style="text-align:right; color:var(--col-cost);">Costo presup.</th>
+            <th style="text-align:right;">Costo real</th>
+            <th style="text-align:center;">Margen real</th>
+            <th></th>
+          </tr></thead>
+          <tbody id="completadas-tbody"></tbody>
+        </table>
+      </div>
+      <div id="completadas-empty" class="empty-state" style="display:none;">
+        <div class="icon">📦</div>
+        Todavía no hay órdenes completadas.
       </div>
     </div>
   </div>
@@ -248,20 +272,20 @@
         <button class="del-btn" style="font-size:22px;" onclick="closeModal()">×</button>
       </div>
     </div>
-        <div class="modal-body">
+    <div class="modal-body">
 
-      <!-- RESULTADO RÁPIDO -->
+      <!-- RESULTADO FINAL -->
       <div id="resultado-box" class="resultado-box neutral" style="margin-bottom:20px;">
         <div class="resultado-item">
-          <div class="resultado-label">Venta</div>
+          <div class="resultado-label">Venta total</div>
           <div class="resultado-valor" id="r-venta" style="color:var(--col-sale);">$—</div>
         </div>
         <div class="resultado-item">
-          <div class="resultado-label">Costo real</div>
+          <div class="resultado-label">Costo real total</div>
           <div class="resultado-valor" id="r-costo-real" style="color:var(--col-cost);">$—</div>
         </div>
         <div class="resultado-item">
-          <div class="resultado-label">Ganancia</div>
+          <div class="resultado-label">Ganancia real</div>
           <div class="resultado-valor" id="r-ganancia">$—</div>
         </div>
         <div class="resultado-item">
@@ -270,16 +294,24 @@
         </div>
       </div>
 
-      <!-- CARGA DE COSTOS — mínima -->
+      <!-- COMPARATIVA POR PRODUCTO -->
+      <div class="section-title" style="margin-bottom:14px;">
+        Comparativa por producto
+        <span class="frozen-badge">presupuestado vs real</span>
+      </div>
+      <div id="comparativa-section" style="margin-bottom:24px;"></div>
+
+      <!-- CARGA DE COSTOS REALES POR ÍTEM -->
+      <div class="section-title">
+        Costos reales por ítem
+        <span class="real-badge">editable</span>
+      </div>
       <div id="items-reales-container"></div>
 
       <div style="display:flex; justify-content:flex-end; margin-top:16px;">
-        <button class="btn btn-primary" onclick="guardarCostosReales()">?? Guardar costos</button>
+        <button class="btn btn-primary" onclick="guardarCostosReales()">💾 Guardar costos reales</button>
       </div>
 
-    </div>
-  </div>
-</div>
     </div>
   </div>
 </div>
@@ -289,7 +321,7 @@
 <!-- FIREBASE -->
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import { getFirestore, collection, doc, onSnapshot, addDoc, updateDoc } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import { getFirestore, collection, doc, onSnapshot, addDoc, updateDoc, query, orderBy, where } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
 const firebaseConfig = {
   apiKey: "AIzaSyAQNT8-8Q5v7Tfn9MIy530RSHdZj6Am390",
@@ -310,71 +342,50 @@ window._fbCollection= collection;
 
 const fbStatus = document.getElementById('fb-status');
 
-// Primero cargar órdenes, luego arrancar el listener de cotizaciones
-let cotizacionesListenerActivo = false;
+// Escuchar cotizaciones APROBADAS — crearles orden si no tienen
+onSnapshot(
+  query(collection(db, 'cotizaciones'), where('estado', '==', 'aprobada')),
+  async snap => {
+    for (const d of snap.docs) {
+      const cot = { firebaseId: d.id, ...d.data() };
+      if (!cot.ordenId) {
+        const ordenRef = await addDoc(collection(db, 'ordenes'), {
+          cotizacionId:  cot.firebaseId,
+          cotizacionNum: cot.id,
+          cliente:       cot.cliente,
+          proyecto:      cot.proyecto,
+          vendedor:      cot.vendedor || '—',
+          fecha:         cot.fecha,
+          items:         cot.items   || [],
+          globals:       cot.globals || {},
+          totalVenta:    cot.totalVenta || 0,
+          costosReales:  {},
+          estado:        'pendiente',
+          creadoEn:      new Date().toISOString(),
+        });
+        await updateDoc(doc(db, 'cotizaciones', cot.firebaseId), { ordenId: ordenRef.id });
+      }
+    }
+  }
+);
 
+// Escuchar órdenes — sin orderBy para evitar índice compuesto, ordenamos en cliente
 onSnapshot(
   collection(db, 'ordenes'),
   snap => {
     window._ordenes = {};
     snap.forEach(d => window._ordenes[d.id] = { firebaseId: d.id, ...d.data() });
-    window._ordenesSorted = Object.values(window._ordenes)
-      .sort((a, b) => (b.creadoEn || '').localeCompare(a.creadoEn || ''));
-    fbStatus.textContent = '?? en vivo';
+    fbStatus.textContent = '🟢 en vivo';
     fbStatus.style.color = 'var(--accent)';
     document.getElementById('loading-state').style.display = 'none';
     document.getElementById('table-wrapper').style.display = 'block';
-    log(`?? Órdenes cargadas: ${snap.docs.length}`);
-    if (typeof applyFilters === 'function') applyFilters();
-    if (typeof updateMetrics === 'function') updateMetrics();
-
-    // Arrancar listener de cotizaciones solo una vez, cuando ya tenemos las órdenes
-    if (!cotizacionesListenerActivo) {
-      cotizacionesListenerActivo = true;
-      onSnapshot(
-        collection(db, 'cotizaciones'),
-        async snap => {
-          const aprobadas = snap.docs.filter(d => d.data().estado === 'aprobada');
-          log(`?? Total: ${snap.docs.length} | Aprobadas: ${aprobadas.length}`);
-
-          for (const d of aprobadas) {
-            const cot = { firebaseId: d.id, ...d.data() };
-            const ordenExiste = cot.ordenId && !!window._ordenes[cot.ordenId];
-            log(`?? ${cot.id} — ordenId: ${cot.ordenId || 'ninguno'} — existe: ${ordenExiste}`);
-
-            if (!ordenExiste) {
-              log(`⏳ Creando orden para ${cot.id}...`);
-              try {
-                const ordenRef = await addDoc(collection(db, 'ordenes'), {
-                  cotizacionId:  cot.firebaseId,
-                  cotizacionNum: cot.id,
-                  cliente:       cot.cliente,
-                  proyecto:      cot.proyecto,
-                  vendedor:      cot.vendedor || '—',
-                  fecha:         cot.fecha,
-                  items:         cot.items   || [],
-                  globals:       cot.globals || {},
-                  totalVenta:    cot.totalVenta || 0,
-                  costosReales:  {},
-                  estado:        'pendiente',
-                  creadoEn:      new Date().toISOString(),
-                });
-                await updateDoc(doc(db, 'cotizaciones', cot.firebaseId), { ordenId: ordenRef.id });
-                log(`✅ Orden creada: ${ordenRef.id}`);
-              } catch(e) {
-                log(`❌ Error: ${e.message}`, true);
-              }
-            }
-          }
-        },
-        err => log(`❌ Error listener cotizaciones: ${err.message}`, true)
-      );
-    }
+    // Disparar evento para que el script regular actualice la vista
+    document.dispatchEvent(new CustomEvent('ordenes-updated'));
   },
   err => {
-    fbStatus.textContent = '?? error';
+    fbStatus.textContent = '🔴 error';
     fbStatus.style.color = 'var(--danger)';
-    log(`❌ Error listener órdenes: ${err.message}`, true);
+    console.error(err);
   }
 );
 </script>
@@ -475,14 +486,15 @@ function updateMetrics() {
 // ============================================================
 function applyFilters() {
   const search = document.getElementById('f-search')?.value.toLowerCase() || '';
-  const estado = document.getElementById('f-estado')?.value || '';
   const all    = Object.values(window._ordenes)
     .sort((a, b) => (b.creadoEn || '').localeCompare(a.creadoEn || ''));
-  const filtered = all.filter(o =>
-    (!search || (o.cliente||'').toLowerCase().includes(search) || (o.proyecto||'').toLowerCase().includes(search) || (o.cotizacionNum||'').toLowerCase().includes(search)) &&
-    (!estado || o.estado === estado)
-  );
-  renderTabla(filtered);
+
+  const activas     = all.filter(o => o.estado !== 'completada' &&
+    (!search || (o.cliente||'').toLowerCase().includes(search) || (o.proyecto||'').toLowerCase().includes(search) || (o.cotizacionNum||'').toLowerCase().includes(search)));
+  const completadas = all.filter(o => o.estado === 'completada');
+
+  renderTabla(activas);
+  renderCompletadas(completadas);
 }
 
 function renderTabla(ordenes) {
@@ -490,39 +502,46 @@ function renderTabla(ordenes) {
   const empty = document.getElementById('empty-state');
   if (ordenes.length === 0) { empty.style.display = 'block'; tbody.innerHTML = ''; return; }
   empty.style.display = 'none';
-
-  tbody.innerHTML = ordenes.map(o => {
-    const pres = calcPresupuestado(o);
-    const real = tieneAlgunCostoReal(o) ? calcReal(o) : null;
-    const margenReal = real && real.ventaTotal > 0 ? (real.ganancia / real.ventaTotal * 100) : null;
-    const margenColor = margenReal === null ? 'var(--muted)' : margenReal >= 15 ? 'var(--accent)' : margenReal >= 0 ? 'var(--warn)' : 'var(--danger)';
-
-    return `<tr style="cursor:pointer;" onclick="openOrden('${o.firebaseId}')">
-      <td style="font-family:var(--font-mono); font-size:11px; color:var(--muted); white-space:nowrap;">OP-${o.cotizacionNum}</td>
-      <td style="font-weight:600;">${o.cliente}</td>
-      <td style="color:var(--muted);">${o.proyecto}</td>
-      <td style="font-family:var(--font-mono); font-size:11px; color:var(--accent);">${o.cotizacionNum}</td>
-      <td style="font-family:var(--font-mono); font-size:13px; font-weight:700; color:var(--col-sale); text-align:right; white-space:nowrap;">$${fmtN(o.totalVenta)}</td>
-      <td style="font-family:var(--font-mono); font-size:12px; color:var(--col-cost); text-align:right; white-space:nowrap;">$${fmtN(pres.costoTotal)}</td>
-      <td style="font-family:var(--font-mono); font-size:12px; text-align:right; white-space:nowrap; color:${real ? 'var(--col-cost)' : 'var(--muted2)'};">
-        ${real ? '$' + fmtN(real.costoTotal) : '—'}
-      </td>
-      <td style="text-align:center; min-width:90px;">
-        ${margenReal !== null ? `
-          <div style="font-family:var(--font-mono); font-size:12px; font-weight:700; color:${margenColor};">${margenReal.toFixed(1)}%</div>
-          <div class="margen-bar"><div class="margen-fill" style="width:${Math.min(Math.max(margenReal,0),100)}%; background:${margenColor};"></div></div>
-        ` : '<span style="color:var(--muted2); font-size:11px;">sin datos</span>'}
-      </td>
-      <td style="text-align:center;"><span class="badge badge-${o.estado||'pendiente'}">${estadoLabel(o.estado)}</span></td>
-      <td><button class="btn btn-secondary" style="font-size:11px; padding:4px 10px;" onclick="event.stopPropagation(); openOrden('${o.firebaseId}')">✏️ Cargar</button></td>
-    </tr>`;
-  }).join('');
+  tbody.innerHTML = ordenes.map(o => renderOrdenFila(o, true)).join('');
 }
 
-function estadoLabel(e) {
-  return { pendiente: 'Pendiente', 'en-proceso': 'En proceso', completada: 'Completada' }[e] || e;
+function renderCompletadas(ordenes) {
+  const tbody = document.getElementById('completadas-tbody');
+  const empty = document.getElementById('completadas-empty');
+  const count = document.getElementById('completadas-count');
+  const ganTotal = ordenes.reduce((s,o) => { const r = calcReal(o); return s + (tieneAlgunCostoReal(o) ? r.ganancia : 0); }, 0);
+  count.textContent = ordenes.length + ' órdenes' + (ganTotal !== 0 ? ' · ganancia real: $' + fmtN(ganTotal) : '');
+  if (ordenes.length === 0) { empty.style.display = 'block'; tbody.innerHTML = ''; return; }
+  empty.style.display = 'none';
+  tbody.innerHTML = ordenes.map(o => renderOrdenFila(o, false)).join('');
 }
 
+function renderOrdenFila(o, showEstado) {
+  const pres = calcPresupuestado(o);
+  const real = tieneAlgunCostoReal(o) ? calcReal(o) : null;
+  const costoMostrar = real ? real.costoTotal : pres.costoTotal;
+  const margenReal   = real && real.ventaTotal > 0 ? (real.ganancia / real.ventaTotal * 100) : null;
+  const margenColor  = margenReal === null ? 'var(--muted2)' : margenReal >= 15 ? 'var(--accent)' : margenReal >= 0 ? 'var(--warn)' : 'var(--danger)';
+  const badgeClass   = { pendiente:'badge-pendiente', 'en-proceso':'badge-en-proceso', completada:'badge-completada' }[o.estado] || '';
+
+  return `<tr style="cursor:pointer;" onclick="openOrden('${o.firebaseId}')">
+    <td style="font-family:var(--font-mono); color:var(--accent); font-size:12px; white-space:nowrap;">${o.cotizacionNum||'—'}</td>
+    <td style="font-weight:600;">${o.cliente}</td>
+    <td style="color:var(--muted);">${o.proyecto}</td>
+    <td style="font-family:var(--font-mono); font-size:11px; color:var(--muted2);">${o.cotizacionNum||'—'}</td>
+    <td style="font-family:var(--font-mono); font-weight:700; color:var(--col-sale); text-align:right; white-space:nowrap;">$${fmtN(o.totalVenta||0)}</td>
+    <td style="font-family:var(--font-mono); color:var(--col-cost); text-align:right; white-space:nowrap;">$${fmtN(pres.costoTotal)}</td>
+    <td style="font-family:var(--font-mono); text-align:right; white-space:nowrap; color:${real ? 'var(--col-cost)' : 'var(--muted2)'};">${real ? '$'+fmtN(real.costoTotal) : '—'}</td>
+    <td style="text-align:center; min-width:90px;">
+      ${margenReal !== null ? `
+        <span style="font-family:var(--font-mono); font-size:12px; font-weight:700; color:${margenColor};">${margenReal.toFixed(1)}%</span>
+        <div class="margen-bar"><div class="margen-fill" style="width:${Math.min(Math.max(margenReal,0),60)/60*100}%; background:${margenColor};"></div></div>
+      ` : '<span style="color:var(--muted2); font-size:11px;">sin datos</span>'}
+    </td>
+    ${showEstado ? `<td style="text-align:center;"><span class="badge ${badgeClass}">${o.estado}</span></td>` : ''}
+    <td><button class="btn btn-secondary" style="font-size:11px; padding:5px 10px;" onclick="event.stopPropagation(); openOrden('${o.firebaseId}')">Abrir</button></td>
+  </tr>`;
+}
 // ============================================================
 // MODAL ORDEN
 // ============================================================
@@ -740,45 +759,42 @@ function renderItemsReales(o) {
   const container = document.getElementById('items-reales-container');
 
   container.innerHTML = (o.items || []).map((item, i) => {
-    const r = cr[i] || {};
-    const rMat = r.materiales || '';
-    const rLog = r.logistica  || '';
-    const rMO  = r.moObs      || '';
-    const rOtros = r.otros    || '';
-    const total = (parseFloat(rMat)||0)+(parseFloat(rLog)||0)+(parseFloat(rMO)||0)+(parseFloat(rOtros)||0);
-
-    return `<div style="border:1px solid var(--border); border-radius:8px; padding:14px 16px; margin-bottom:8px;">
-      <div style="font-size:13px; font-weight:700; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center;">
-        <span>${item.desc || 'Ítem '+(i+1)} <span style="color:var(--muted); font-size:11px; font-weight:400;">× ${item.qc}</span></span>
-        ${total > 0 ? `<span style="font-family:var(--font-mono); font-size:12px; color:var(--col-cost);">$${fmtN(total)}</span>` : ''}
-      </div>
-      <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:8px;">
+    const real = cr[i] || {};
+    const pres = calcItemPresup(item, o.globals || {});
+    return `
+    <div class="item-real-card">
+      <div class="item-real-header">
         <div>
-          <div style="font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:var(--muted); margin-bottom:4px;">Materiales</div>
-          <input type="number" class="costo-input" id="real-${i}-materiales" value="${rMat}" placeholder="$0" min="0" step="100" oninput="previewReal()">
+          <div class="item-real-nombre">${item.desc || 'Ítem ' + (i+1)}</div>
+          <div class="item-real-cant">Cantidad: ${item.qc} u. · Costo presup. unit.: $${fmtN(item.costoUnit)} · Venta presup.: $${fmtN(pres.ventaFinal)}</div>
         </div>
-        <div>
-          <div style="font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:var(--muted); margin-bottom:4px;">Logística</div>
-          <input type="number" class="costo-input" id="real-${i}-logistica" value="${rLog}" placeholder="$0" min="0" step="100" oninput="previewReal()">
-        </div>
-        <div>
-          <div style="font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:var(--muted); margin-bottom:4px;">Mano de obra</div>
-          <input type="number" class="costo-input" id="real-${i}-moObs" value="${rMO}" placeholder="$0" min="0" step="100" oninput="previewReal()">
-        </div>
-        <div>
-          <div style="font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:var(--muted); margin-bottom:4px;">Otros</div>
-          <input type="number" class="costo-input" id="real-${i}-otros" value="${rOtros}" placeholder="$0" min="0" step="100" oninput="previewReal()">
+        <div style="text-align:right;">
+          <div style="font-size:9px; text-transform:uppercase; letter-spacing:0.6px; color:var(--muted); margin-bottom:2px;">Costo presup. total</div>
+          <div style="font-family:var(--font-mono); font-size:15px; color:var(--col-cost);">$${fmtN(pres.costoTotalItem)}</div>
         </div>
       </div>
-    </div>`;
-  }).join('');
-}
+      <div class="costos-grid">
+        <div class="costo-field">
+          <label>Materiales / Producción $</label>
+          <input type="number" class="costo-input" id="real-${i}-materiales" value="${real.materiales||''}" placeholder="0" min="0" step="100" oninput="previewReal()">
+        </div>
         <div class="costo-field">
           <label>Logística $</label>
           <input type="number" class="costo-input" id="real-${i}-logistica" value="${real.logistica||''}" placeholder="0" min="0" step="100" oninput="previewReal()">
         </div>
         <div class="costo-field">
           <label>Mano de obra $</label>
+          <input type="number" class="costo-input" id="real-${i}-moObs" value="${real.moObs||''}" placeholder="0" min="0" step="100" oninput="previewReal()">
+        </div>
+        <div class="costo-field">
+          <label>Otros / Imprevistos $</label>
+          <input type="number" class="costo-input" id="real-${i}-otros" value="${real.otros||''}" placeholder="0" min="0" step="100" oninput="previewReal()">
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
 function calcItemPresup(item, g) {
   const qc     = item.qc || 1;
   const extra  = item.extra || 0;
@@ -808,7 +824,7 @@ function previewReal() {
   const cr = collectCostosReales(o);
   const tempOrden = { ...o, costosReales: cr };
   renderResultado(tempOrden);
-  renderItemsReales(tempOrden);
+  renderComparativa(tempOrden);
 }
 
 function collectCostosReales(o) {

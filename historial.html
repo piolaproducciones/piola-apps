@@ -212,7 +212,6 @@
           <option value="">Todos los estados</option>
           <option value="borrador">Borrador</option>
           <option value="enviada">Enviada</option>
-          <option value="aprobada">Aprobada</option>
           <option value="rechazada">Rechazada</option>
         </select>
         <select class="form-control" id="f-vendedor" onchange="applyFilters()" style="width:160px;">
@@ -302,7 +301,6 @@ const db  = getFirestore(app);
 window._db          = db;
 window._fbDoc       = doc;
 window._fbUpdateDoc = updateDoc;
-window._fbCollection= collection;
 
 const fbStatus = document.getElementById('fb-status');
 
@@ -446,15 +444,18 @@ function renderTabla(quotes) {
 
 function renderFila(q) {
   const est = q.estado || 'borrador';
+  // Opciones según estado actual — flujo: borrador → enviada → aprobada/rechazada
+  const puedeEnviar    = est === 'borrador';
+  const puedeAprobar   = est === 'enviada';
+  const puedeRechazar  = est === 'enviada';
+  const puedeVolver    = est === 'rechazada';
+
   const acciones = [];
+  if (puedeEnviar)   acciones.push(`<button class="btn-estado enviada"   onclick="event.stopPropagation(); cambiarEstado('${q.firebaseId}','enviada',this)">→ Enviar</button>`);
+  if (puedeAprobar)  acciones.push(`<button class="btn-estado aprobada"  onclick="event.stopPropagation(); cambiarEstado('${q.firebaseId}','aprobada',this)">✓ Aprobar</button>`);
+  if (puedeRechazar) acciones.push(`<button class="btn-estado rechazada" onclick="event.stopPropagation(); cambiarEstado('${q.firebaseId}','rechazada',this)">✕ Rechazar</button>`);
+  if (puedeVolver)   acciones.push(`<button class="btn-estado enviada"   onclick="event.stopPropagation(); cambiarEstado('${q.firebaseId}','enviada',this)">↩ Reenviar</button>`);
 
-  if (est === 'borrador')   acciones.push(`<button class="btn-estado enviada"   onclick="event.stopPropagation(); cambiarEstado('${q.firebaseId}','enviada')">→ Enviar</button>`);
-  if (est === 'enviada')    acciones.push(`<button class="btn-estado aprobada"  onclick="event.stopPropagation(); cambiarEstado('${q.firebaseId}','aprobada')">✓ Aprobar</button>`);
-  if (est === 'enviada')    acciones.push(`<button class="btn-estado rechazada" onclick="event.stopPropagation(); cambiarEstado('${q.firebaseId}','rechazada')">✕ Rechazar</button>`);
-  if (est === 'rechazada')  acciones.push(`<button class="btn-estado enviada"   onclick="event.stopPropagation(); cambiarEstado('${q.firebaseId}','enviada')">↩ Reenviar</button>`);
-  if (est === 'aprobada')   acciones.push(`<button class="btn-estado rechazada" onclick="event.stopPropagation(); if(confirm('¿Revertir aprobación? Esto también afectará la orden de producción.')) cambiarEstado('${q.firebaseId}','enviada')" style="font-size:9px;">↩ Revertir</button>`);
-
-  const estadoLabels = { borrador:'Borrador', enviada:'Enviada', aprobada:'Aprobada', rechazada:'Rechazada' };
   return `<tr onclick="openDetalle('${q.firebaseId}')" style="cursor:pointer;">
     <td style="font-family:var(--font-mono); color:var(--accent); font-size:12px; white-space:nowrap;">${q.id}</td>
     <td style="font-weight:600;">${q.cliente}</td>
@@ -462,19 +463,18 @@ function renderFila(q) {
     <td style="font-family:var(--font-mono); font-size:11px; color:var(--muted); white-space:nowrap;">${q.fecha}</td>
     <td style="font-family:var(--font-mono); font-size:13px; font-weight:700; color:var(--col-sale); text-align:right; white-space:nowrap;">$${fmtN(q.totalVenta||0)}</td>
     <td style="text-align:center;" onclick="event.stopPropagation()">
-      <span class="estado-badge estado-${est}">${estadoLabels[est]||est}</span>
+      <span class="estado-badge estado-${est}">${{borrador:'Borrador',enviada:'Enviada',rechazada:'Rechazada'}[est]||est}</span>
     </td>
     <td style="color:var(--muted); font-size:12px;">${q.vendedor||'—'}</td>
     <td style="font-family:var(--font-mono); font-size:10px; color:var(--muted2); white-space:nowrap;">${q.savedAtDisplay||'—'}</td>
     <td onclick="event.stopPropagation()" style="white-space:nowrap;">
       <div style="display:flex; gap:4px; justify-content:flex-end; align-items:center;">
         ${acciones.join('')}
-        <button class="del-btn" title="Ver detalle" onclick="openDetalle('${q.firebaseId}')">??</button>
+        <button class="del-btn" title="Ver detalle" onclick="openDetalle('${q.firebaseId}')">👁</button>
       </div>
     </td>
   </tr>`;
 }
-
 
 async function cambiarEstado(firebaseId, nuevoEstado) {
   try {
@@ -482,7 +482,6 @@ async function cambiarEstado(firebaseId, nuevoEstado) {
     toast('Estado actualizado → ' + nuevoEstado, 'success');
   } catch(e) { toast('Error: ' + e.message, ''); }
 }
-
 
 // ============================================================
 // DETALLE MODAL
