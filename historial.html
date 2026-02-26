@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cotizaciones Piola</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0c0c0f;
+    --surface: #141418;
+    --surface2: #1c1c22;
+    --surface3: #242430;
+    --border: #2a2a38;
+    --accent: #c8ff57;
+    --danger: #ff5757;
+    --warn: #ffb857;
+    --text: #e8e8f0;
+    --muted: #6b6b80;
+    --muted2: #4a4a5a;
+    --col-cost: #ff8fa3;
+    --col-fin: #57c8ff;
+    --col-sale: #c8ff57;
+    --font-body: 'Syne', sans-serif;
+    --font-mono: 'DM Mono', monospace;
+    --font-display: 'DM Serif Display', serif;
+    --radius: 10px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: var(--font-body); font-size: 13px; min-height: 100vh; }
+
+  .topbar {
+    background: var(--surface); border-bottom: 1px solid var(--border);
+    padding: 0 28px; height: 56px; display: flex; align-items: center;
+    justify-content: space-between; position: sticky; top: 0; z-index: 100;
+  }
+  .logo { font-family: var(--font-display); font-size: 22px; letter-spacing: -0.5px; }
+  .logo span { color: var(--accent); }
+  .logo .role { font-family: var(--font-mono); font-size: 11px; color: var(--muted); margin-left: 10px; letter-spacing: 1px; text-transform: uppercase; }
+
+  .main { padding: 24px 28px; max-width: 1500px; margin: 0 auto; }
+
+  /* MÉTRICAS */
+  .metrics { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; margin-bottom: 22px; }
+  .metric-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 20px; }
+  .metric-label { font-size: 9px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+  .metric-value { font-family: var(--font-mono); font-size: 22px; font-weight: 500; color: var(--text); }
+  .metric-value.green { color: var(--col-sale); }
+  .metric-value.blue  { color: var(--col-fin); }
+  .metric-value.pink  { color: var(--col-cost); }
+  .metric-sub { font-size: 10px; color: var(--muted); margin-top: 4px; font-family: var(--font-mono); }
+
+  /* PANEL */
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  .panel-header { padding: 14px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; background: var(--surface2); flex-wrap: wrap; gap: 10px; }
+  .panel-title { font-size: 11px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: var(--muted); }
+  .panel-body { padding: 20px; }
+
+  /* FILTROS */
+  .filters { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .form-control { background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; color: var(--text); padding: 8px 12px; font-family: var(--font-body); font-size: 13px; outline: none; transition: border-color 0.2s; }
+  .form-control:focus { border-color: var(--accent); }
+  select.form-control option { background: var(--surface2); }
+  input[type="date"].form-control { color-scheme: dark; }
+
+  /* TABLA */
+  .table-wrapper { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; }
+  thead th { padding: 10px 12px; text-align: left; font-size: 9px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--border); white-space: nowrap; }
+  tbody tr { border-bottom: 1px solid rgba(42,42,56,0.5); transition: background 0.15s; cursor: pointer; }
+  tbody tr:hover { background: rgba(200,255,87,0.03); }
+  td { padding: 11px 12px; vertical-align: middle; }
+
+  /* BADGES ESTADO */
+  .estado-badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 10px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; font-family: var(--font-mono); white-space: nowrap; }
+  .estado-borrador  { background: rgba(107,107,128,0.2); color: var(--muted);   border: 1px solid rgba(107,107,128,0.3); }
+  .estado-enviada   { background: rgba(87,200,255,0.15); color: var(--col-fin); border: 1px solid rgba(87,200,255,0.3); }
+  .estado-aprobada  { background: rgba(200,255,87,0.15); color: var(--accent);  border: 1px solid rgba(200,255,87,0.3); }
+  .estado-rechazada { background: rgba(255,87,87,0.15);  color: var(--danger);  border: 1px solid rgba(255,87,87,0.3); }
+
+  /* ESTADO SELECT inline */
+  .estado-select { border: none; border-radius: 20px; padding: 3px 10px; font-size: 10px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; font-family: var(--font-mono); cursor: pointer; outline: none; appearance: none; -webkit-appearance: none; text-align: center; }
+  .estado-select.estado-borrador  { background: rgba(107,107,128,0.2); color: var(--muted);   border: 1px solid rgba(107,107,128,0.3); }
+  .estado-select.estado-enviada   { background: rgba(87,200,255,0.15); color: var(--col-fin); border: 1px solid rgba(87,200,255,0.3); }
+  .estado-select.estado-aprobada  { background: rgba(200,255,87,0.15); color: var(--accent);  border: 1px solid rgba(200,255,87,0.3); }
+  .estado-select.estado-rechazada { background: rgba(255,87,87,0.15);  color: var(--danger);  border: 1px solid rgba(255,87,87,0.3); }
+
+  /* MODAL DETALLE */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 200; align-items: center; justify-content: center; }
+  .modal-overlay.open { display: flex; }
+  .modal-box { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); width: 820px; max-width: 96vw; max-height: 88vh; overflow-y: auto; }
+  .modal-header { padding: 18px 24px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: flex-start; background: var(--surface2); position: sticky; top: 0; z-index: 10; }
+  .modal-body { padding: 24px; }
+
+  .del-btn { background: none; border: none; color: var(--muted2); cursor: pointer; padding: 4px 8px; border-radius: 4px; font-size: 16px; transition: all 0.2s; }
+  .del-btn:hover { color: var(--danger); background: rgba(255,87,87,0.1); }
+  .btn { padding: 8px 16px; border-radius: 6px; border: none; cursor: pointer; font-family: var(--font-body); font-size: 12px; font-weight: 600; transition: all 0.2s; }
+  .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+  .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+
+  .empty-state { padding: 60px; text-align: center; color: var(--muted); }
+  .empty-state .icon { font-size: 40px; margin-bottom: 14px; }
+
+  .toast { position: fixed; bottom: 24px; right: 24px; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 20px; font-size: 13px; z-index: 999; transform: translateY(80px); opacity: 0; transition: all 0.3s; }
+  .toast.show { transform: translateY(0); opacity: 1; }
+  .toast.success { border-color: rgba(200,255,87,0.4); }
+
+  /* BOTONES DE ESTADO */
+  .btn-estado { border: none; border-radius: 20px; padding: 3px 10px; font-size: 10px; font-weight: 700; letter-spacing: 0.5px; font-family: var(--font-mono); cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+  .btn-estado.enviada   { background: rgba(87,200,255,0.15); color: var(--col-fin); border: 1px solid rgba(87,200,255,0.3); }
+  .btn-estado.enviada:hover { background: rgba(87,200,255,0.3); }
+  .btn-estado.aprobada  { background: rgba(200,255,87,0.15); color: var(--accent);  border: 1px solid rgba(200,255,87,0.3); }
+  .btn-estado.aprobada:hover { background: rgba(200,255,87,0.3); }
+  .btn-estado.rechazada { background: rgba(255,87,87,0.15);  color: var(--danger);  border: 1px solid rgba(255,87,87,0.3); }
+  .btn-estado.rechazada:hover { background: rgba(255,87,87,0.3); }
+  .spinner { width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; flex-shrink: 0; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* DETALLE ITEMS TABLE */
+  .items-table th { color: var(--muted); font-size: 9px; }
+  .items-table td { font-size: 12px; padding: 8px 10px; }
+
+  /* RESUMEN CARDS */
+  .resumen-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
+  .resumen-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; }
+  .resumen-card .label { font-size: 9px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+  .resumen-card .value { font-family: var(--font-mono); font-size: 16px; font-weight: 500; }
+
+  @media (max-width: 900px) {
+    .metrics { grid-template-columns: repeat(2, 1fr); }
+    .resumen-grid { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo">
+    Cotizaciones <span>·</span> Piola
+    <span class="role">Comercial</span>
+  </div>
+  <div style="display:flex; align-items:center; gap:14px;">
+    <span id="fb-status" style="font-size:11px; font-family:var(--font-mono); color:var(--muted);">⏳ conectando...</span>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- MÉTRICAS GENERALES -->
+  <div class="metrics" id="metrics-bar">
+    <div class="metric-card">
+      <div class="metric-label">Total Cotizaciones</div>
+      <div class="metric-value" id="m-total">—</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Monto Total</div>
+      <div class="metric-value green" id="m-monto">—</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Aprobadas</div>
+      <div class="metric-value green" id="m-aprobadas">—</div>
+      <div class="metric-sub" id="m-aprobadas-pct"></div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Enviadas (en proceso)</div>
+      <div class="metric-value blue" id="m-enviadas">—</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Rechazadas</div>
+      <div class="metric-value pink" id="m-rechazadas">—</div>
+    </div>
+  </div>
+
+  <!-- MÉTRICAS POR VENDEDOR -->
+  <div class="panel" style="margin-bottom:16px;">
+    <div class="panel-header">
+      <span class="panel-title">Por vendedor</span>
+    </div>
+    <div style="overflow-x:auto;">
+      <table style="width:100%; border-collapse:collapse;" id="vendedor-tabla">
+        <thead><tr>
+          <th style="padding:9px 14px; font-size:9px; font-weight:700; letter-spacing:0.8px; text-transform:uppercase; color:var(--muted); border-bottom:1px solid var(--border); text-align:left;">Vendedor</th>
+          <th style="padding:9px 14px; font-size:9px; font-weight:700; letter-spacing:0.8px; text-transform:uppercase; color:var(--muted); border-bottom:1px solid var(--border); text-align:center;">Cotizaciones</th>
+          <th style="padding:9px 14px; font-size:9px; font-weight:700; letter-spacing:0.8px; text-transform:uppercase; color:var(--muted); border-bottom:1px solid var(--border); text-align:center;">Enviadas</th>
+          <th style="padding:9px 14px; font-size:9px; font-weight:700; letter-spacing:0.8px; text-transform:uppercase; color:var(--accent); border-bottom:1px solid var(--border); text-align:center;">Aprobadas</th>
+          <th style="padding:9px 14px; font-size:9px; font-weight:700; letter-spacing:0.8px; text-transform:uppercase; color:var(--col-cost); border-bottom:1px solid var(--border); text-align:center;">Rechazadas</th>
+          <th style="padding:9px 14px; font-size:9px; font-weight:700; letter-spacing:0.8px; text-transform:uppercase; color:var(--muted); border-bottom:1px solid var(--border); text-align:center;">Tasa aprobación</th>
+          <th style="padding:9px 14px; font-size:9px; font-weight:700; letter-spacing:0.8px; text-transform:uppercase; color:var(--col-sale); border-bottom:1px solid var(--border); text-align:right;">Monto aprobado</th>
+        </tr></thead>
+        <tbody id="vendedor-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- TABLA PRINCIPAL -->
+  <div class="panel">
+    <div class="panel-header">
+      <span class="panel-title">Pipeline de ventas</span>
+      <div class="filters">
+        <input type="text" class="form-control" id="f-search" placeholder="🔍 Cliente o proyecto..." oninput="applyFilters()" style="width:220px;">
+        <select class="form-control" id="f-estado" onchange="applyFilters()" style="width:150px;">
+          <option value="">Todos los estados</option>
+          <option value="borrador">Borrador</option>
+          <option value="enviada">Enviada</option>
+          <option value="rechazada">Rechazada</option>
+        </select>
+        <select class="form-control" id="f-vendedor" onchange="applyFilters()" style="width:160px;">
+          <option value="">Todos los vendedores</option>
+        </select>
+        <input type="date" class="form-control" id="f-desde" onchange="applyFilters()" title="Desde">
+        <input type="date" class="form-control" id="f-hasta" onchange="applyFilters()" title="Hasta">
+        <button class="btn btn-secondary" onclick="clearFilters()" style="white-space:nowrap;">✕ Limpiar</button>
+      </div>
+    </div>
+    <div class="panel-body" style="padding:0;">
+      <div id="loading-state" class="loading"><div class="spinner"></div> Cargando cotizaciones...</div>
+      <div class="table-wrapper" id="table-wrapper" style="display:none;">
+        <table>
+          <thead><tr>
+            <th>ID</th><th>Cliente</th><th>Proyecto</th><th>Fecha</th>
+            <th style="text-align:right; color:var(--col-sale);">Total</th>
+            <th style="text-align:center;">Estado</th>
+            <th>Vendedor</th><th>Guardada</th><th></th>
+          </tr></thead>
+          <tbody id="cot-tbody"></tbody>
+        </table>
+      </div>
+      <div id="empty-state" class="empty-state" style="display:none;">
+        <div class="icon">🗂</div>No hay cotizaciones que coincidan con los filtros.
+      </div>
+    </div>
+  </div>
+
+</div><!-- main -->
+
+<!-- MODAL DETALLE -->
+<div class="modal-overlay" id="detalle-modal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div>
+        <div style="font-size:11px; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:var(--muted); margin-bottom:4px;">Detalle de Cotización</div>
+        <div style="font-size:20px; font-weight:700;" id="d-titulo"></div>
+        <div style="font-size:12px; color:var(--muted); margin-top:4px;" id="d-subtitulo"></div>
+      </div>
+      <div style="display:flex; align-items:center; gap:12px;">
+        <div id="d-estado-wrap"></div>
+        <button class="del-btn" style="font-size:22px;" onclick="closeDetalle()">×</button>
+      </div>
+    </div>
+    <div class="modal-body">
+      <div class="resumen-grid" id="d-resumen"></div>
+      <div style="font-size:10px; font-weight:700; letter-spacing:0.8px; text-transform:uppercase; color:var(--muted); margin-bottom:10px;">Ítems cotizados</div>
+      <div class="table-wrapper">
+        <table class="items-table" style="width:100%; border-collapse:collapse;">
+          <thead>
+            <tr>
+              <th style="padding:8px 10px; border-bottom:1px solid var(--border);">#</th>
+              <th style="padding:8px 10px; border-bottom:1px solid var(--border);">Producto</th>
+              <th style="padding:8px 10px; border-bottom:1px solid var(--border); text-align:center;">Cant.</th>
+              <th style="padding:8px 10px; border-bottom:1px solid var(--border); text-align:right; color:var(--col-cost);">Costo Unit.</th>
+              <th style="padding:8px 10px; border-bottom:1px solid var(--border); text-align:right; color:var(--col-sale);">Venta Unit.</th>
+              <th style="padding:8px 10px; border-bottom:1px solid var(--border); text-align:right; color:var(--col-sale);">Venta Final</th>
+            </tr>
+          </thead>
+          <tbody id="d-items"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- FIREBASE -->
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import { getFirestore, collection, doc, onSnapshot, updateDoc, query, orderBy } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAQNT8-8Q5v7Tfn9MIy530RSHdZj6Am390",
+  authDomain: "piola-cotizador.firebaseapp.com",
+  projectId: "piola-cotizador",
+  storageBucket: "piola-cotizador.firebasestorage.app",
+  messagingSenderId: "881054830595",
+  appId: "1:881054830595:web:3d138a4952bba717d63e36"
+};
+
+const app = initializeApp(firebaseConfig);
+const db  = getFirestore(app);
+
+window._db          = db;
+window._fbDoc       = doc;
+window._fbUpdateDoc = updateDoc;
+
+const fbStatus = document.getElementById('fb-status');
+
+onSnapshot(
+  query(collection(db, 'cotizaciones'), orderBy('savedAt', 'desc')),
+  snap => {
+    window._allQuotes = [];
+    snap.forEach(d => window._allQuotes.push({ firebaseId: d.id, ...d.data() }));
+    fbStatus.textContent = '🟢 en vivo';
+    fbStatus.style.color = 'var(--accent)';
+    document.getElementById('loading-state').style.display = 'none';
+    document.getElementById('table-wrapper').style.display = 'block';
+    buildVendedorFilter();
+    applyFilters();
+    updateMetrics(window._allQuotes);
+  },
+  err => {
+    fbStatus.textContent = '🔴 error';
+    fbStatus.style.color = 'var(--danger)';
+    console.error(err);
+  }
+);
+</script>
+
+<script>
+window._allQuotes = [];
+
+// ============================================================
+// FILTROS
+// ============================================================
+function applyFilters() {
+  const search   = document.getElementById('f-search').value.toLowerCase();
+  const estado   = document.getElementById('f-estado').value;
+  const vendedor = document.getElementById('f-vendedor').value;
+  const desde    = document.getElementById('f-desde').value;
+  const hasta    = document.getElementById('f-hasta').value;
+
+  const filtered = window._allQuotes.filter(q => {
+    if (search && !q.cliente.toLowerCase().includes(search) && !q.proyecto.toLowerCase().includes(search) && !q.id.toLowerCase().includes(search)) return false;
+    if (estado   && q.estado   !== estado)   return false;
+    if (vendedor && q.vendedor !== vendedor)  return false;
+    if (desde    && q.fecha    < desde)       return false;
+    if (hasta    && q.fecha    > hasta)       return false;
+    return true;
+  });
+
+  renderTabla(filtered);
+  updateMetrics(filtered);
+}
+
+function clearFilters() {
+  document.getElementById('f-search').value   = '';
+  document.getElementById('f-estado').value   = '';
+  document.getElementById('f-vendedor').value = '';
+  document.getElementById('f-desde').value    = '';
+  document.getElementById('f-hasta').value    = '';
+  applyFilters();
+}
+
+function buildVendedorFilter() {
+  const sel = document.getElementById('f-vendedor');
+  const current = sel.value;
+  const vendedores = [...new Set(window._allQuotes.map(q => q.vendedor || '—').filter(Boolean))].sort();
+  sel.innerHTML = '<option value="">Todos los vendedores</option>' +
+    vendedores.map(v => `<option value="${v}" ${current===v?'selected':''}>${v}</option>`).join('');
+}
+
+// ============================================================
+// MÉTRICAS GENERALES
+// ============================================================
+function updateMetrics(quotes) {
+  const all        = window._allQuotes;
+  const total      = quotes.length;
+  const monto      = quotes.reduce((s, q) => s + (q.totalVenta || 0), 0);
+  const aprobadas  = quotes.filter(q => q.estado === 'aprobada').length;
+  const enviadas   = quotes.filter(q => q.estado === 'enviada').length;
+  const rechazadas = quotes.filter(q => q.estado === 'rechazada').length;
+  const cerradas   = aprobadas + rechazadas;
+  const pct        = cerradas > 0 ? Math.round(aprobadas / cerradas * 100) : 0;
+
+  document.getElementById('m-total').textContent         = total;
+  document.getElementById('m-monto').textContent         = '$' + fmtN(monto);
+  document.getElementById('m-aprobadas').textContent     = aprobadas;
+  document.getElementById('m-aprobadas-pct').textContent = cerradas > 0 ? pct + '% de cerradas' : '';
+  document.getElementById('m-enviadas').textContent      = enviadas;
+  document.getElementById('m-rechazadas').textContent    = rechazadas;
+
+  renderVendedores(all);
+}
+
+// ============================================================
+// TABLA POR VENDEDOR
+// ============================================================
+function renderVendedores(quotes) {
+  const mapa = {};
+  quotes.forEach(q => {
+    const v = q.vendedor || '—';
+    if (!mapa[v]) mapa[v] = { total:0, enviadas:0, aprobadas:0, rechazadas:0, monto:0 };
+    mapa[v].total++;
+    if (q.estado === 'enviada')   mapa[v].enviadas++;
+    if (q.estado === 'aprobada')  { mapa[v].aprobadas++; mapa[v].monto += q.totalVenta || 0; }
+    if (q.estado === 'rechazada') mapa[v].rechazadas++;
+  });
+
+  const rows = Object.entries(mapa).sort((a,b) => b[1].aprobadas - a[1].aprobadas).map(([v, d]) => {
+    const cerradas = d.aprobadas + d.rechazadas;
+    const tasa = cerradas > 0 ? Math.round(d.aprobadas / cerradas * 100) : 0;
+    const tasakColor = tasa >= 50 ? 'var(--accent)' : tasa >= 25 ? 'var(--warn)' : 'var(--col-cost)';
+    return `<tr style="border-bottom:1px solid rgba(42,42,56,0.4);">
+      <td style="padding:9px 14px; font-weight:600;">${v}</td>
+      <td style="padding:9px 14px; text-align:center; font-family:var(--font-mono);">${d.total}</td>
+      <td style="padding:9px 14px; text-align:center; font-family:var(--font-mono); color:var(--col-fin);">${d.enviadas}</td>
+      <td style="padding:9px 14px; text-align:center; font-family:var(--font-mono); color:var(--accent);">${d.aprobadas}</td>
+      <td style="padding:9px 14px; text-align:center; font-family:var(--font-mono); color:var(--col-cost);">${d.rechazadas}</td>
+      <td style="padding:9px 14px; text-align:center;">
+        <span style="font-family:var(--font-mono); font-size:13px; font-weight:700; color:${tasakColor};">${cerradas > 0 ? tasa+'%' : '—'}</span>
+      </td>
+      <td style="padding:9px 14px; text-align:right; font-family:var(--font-mono); font-weight:700; color:var(--col-sale);">$${fmtN(d.monto)}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('vendedor-tbody').innerHTML = rows ||
+    '<tr><td colspan="7" style="padding:16px; text-align:center; color:var(--muted2);">Sin datos</td></tr>';
+}
+
+// ============================================================
+// TABLA PRINCIPAL (pipeline — excluye aprobadas)
+// ============================================================
+function renderTabla(quotes) {
+  const tbody = document.getElementById('cot-tbody');
+  const empty = document.getElementById('empty-state');
+  document.getElementById('table-wrapper').style.display = 'block';
+
+  if (quotes.length === 0) {
+    empty.style.display = 'block'; tbody.innerHTML = '';
+  } else {
+    empty.style.display = 'none';
+    tbody.innerHTML = quotes.map(q => renderFila(q)).join('');
+  }
+}
+
+function renderFila(q) {
+  const est = q.estado || 'borrador';
+  // Opciones según estado actual — flujo: borrador → enviada → aprobada/rechazada
+  const puedeEnviar    = est === 'borrador';
+  const puedeAprobar   = est === 'enviada';
+  const puedeRechazar  = est === 'enviada';
+  const puedeVolver    = est === 'rechazada';
+
+  const acciones = [];
+  if (puedeEnviar)   acciones.push(`<button class="btn-estado enviada"   onclick="event.stopPropagation(); cambiarEstado('${q.firebaseId}','enviada',this)">→ Enviar</button>`);
+  if (puedeAprobar)  acciones.push(`<button class="btn-estado aprobada"  onclick="event.stopPropagation(); cambiarEstado('${q.firebaseId}','aprobada',this)">✓ Aprobar</button>`);
+  if (puedeRechazar) acciones.push(`<button class="btn-estado rechazada" onclick="event.stopPropagation(); cambiarEstado('${q.firebaseId}','rechazada',this)">✕ Rechazar</button>`);
+  if (puedeVolver)   acciones.push(`<button class="btn-estado enviada"   onclick="event.stopPropagation(); cambiarEstado('${q.firebaseId}','enviada',this)">↩ Reenviar</button>`);
+
+  return `<tr onclick="openDetalle('${q.firebaseId}')" style="cursor:pointer;">
+    <td style="font-family:var(--font-mono); color:var(--accent); font-size:12px; white-space:nowrap;">${q.id}</td>
+    <td style="font-weight:600;">${q.cliente}</td>
+    <td style="color:var(--muted);">${q.proyecto}</td>
+    <td style="font-family:var(--font-mono); font-size:11px; color:var(--muted); white-space:nowrap;">${q.fecha}</td>
+    <td style="font-family:var(--font-mono); font-size:13px; font-weight:700; color:var(--col-sale); text-align:right; white-space:nowrap;">$${fmtN(q.totalVenta||0)}</td>
+    <td style="text-align:center;" onclick="event.stopPropagation()">
+      <span class="estado-badge estado-${est}">${{borrador:'Borrador',enviada:'Enviada',rechazada:'Rechazada'}[est]||est}</span>
+    </td>
+    <td style="color:var(--muted); font-size:12px;">${q.vendedor||'—'}</td>
+    <td style="font-family:var(--font-mono); font-size:10px; color:var(--muted2); white-space:nowrap;">${q.savedAtDisplay||'—'}</td>
+    <td onclick="event.stopPropagation()" style="white-space:nowrap;">
+      <div style="display:flex; gap:4px; justify-content:flex-end; align-items:center;">
+        ${acciones.join('')}
+        <button class="del-btn" title="Ver detalle" onclick="openDetalle('${q.firebaseId}')">👁</button>
+      </div>
+    </td>
+  </tr>`;
+}
+
+async function cambiarEstado(firebaseId, nuevoEstado) {
+  try {
+    await window._fbUpdateDoc(window._fbDoc(window._db, 'cotizaciones', firebaseId), { estado: nuevoEstado });
+    toast('Estado actualizado → ' + nuevoEstado, 'success');
+  } catch(e) { toast('Error: ' + e.message, ''); }
+}
+
+// ============================================================
+// DETALLE MODAL
+// ============================================================
+function openDetalle(firebaseId) {
+  const q = window._allQuotes.find(x => x.firebaseId === firebaseId);
+  if (!q) return;
+
+  document.getElementById('d-titulo').textContent   = q.proyecto;
+  document.getElementById('d-subtitulo').textContent = q.cliente + ' · ' + q.fecha + (q.vendedor ? ' · ' + q.vendedor : '');
+
+  const est = q.estado || 'borrador';
+  const estadoLabel = { borrador:'Borrador', enviada:'Enviada', aprobada:'Aprobada', rechazada:'Rechazada' };
+  document.getElementById('d-estado-wrap').innerHTML =
+    `<span class="estado-badge estado-${est}">${estadoLabel[est]}</span>`;
+
+  // Calcular totales desde los items guardados
+  const globals = q.globals || {};
+  const iva     = (globals.iva || 21) / 100;
+  const totalSinIVA = q.totalVenta || 0;
+  const totalConIVA = totalSinIVA * (1 + iva);
+
+  // Costo total aproximado
+  const costoTotal = (q.items || []).reduce((s, item) => {
+    const costoUnit = item.costoUnit || 0;
+    const qc        = item.qc || 1;
+    const extra     = item.extra || 0;
+    const cantLog   = item.cantLog || 0;
+    const logBase   = globals.logisticaBase || 0;
+    const depoP     = (globals.depoP || 0) / 100;
+    const cTotal    = (qc + extra) * costoUnit;
+    const log       = cantLog * logBase;
+    const depo      = cTotal * depoP;
+    return s + cTotal + log + depo;
+  }, 0);
+
+  document.getElementById('d-resumen').innerHTML = `
+    <div class="resumen-card">
+      <div class="label">ID Cotización</div>
+      <div class="value" style="font-family:var(--font-mono); color:var(--accent);">${q.id}</div>
+    </div>
+    <div class="resumen-card">
+      <div class="label">Total sin IVA</div>
+      <div class="value" style="color:var(--col-sale);">$${fmtN(totalSinIVA)}</div>
+    </div>
+    <div class="resumen-card">
+      <div class="label">Total con IVA (${globals.iva||21}%)</div>
+      <div class="value" style="color:var(--col-sale);">$${fmtN(totalConIVA)}</div>
+    </div>
+    <div class="resumen-card">
+      <div class="label">Costo estimado</div>
+      <div class="value" style="color:var(--col-cost);">$${fmtN(costoTotal)}</div>
+    </div>
+    <div class="resumen-card">
+      <div class="label">USD CCL</div>
+      <div class="value" style="font-family:var(--font-mono);">$${fmtN(globals.dolarCCL||0)}</div>
+    </div>
+    <div class="resumen-card">
+      <div class="label">Condición pago</div>
+      <div class="value" style="font-family:var(--font-mono);">${globals.cft||0}% CFT</div>
+    </div>
+  `;
+
+  // Items
+  const itemsHtml = (q.items || []).map((item, i) => {
+    const costoUnitFinal = item.costoUnit || 0;
+    const margenP = (item.margen || 30) / 100;
+    const ventaUnit = margenP < 1 ? costoUnitFinal / (1 - margenP) : costoUnitFinal;
+    const cft = (globals.cft || 0) / 100;
+    const comP = (globals.comisionP || 0) / 100;
+    const financ = ventaUnit * cft;
+    const comAg  = (ventaUnit + financ) * comP;
+    const ventaFinal = (ventaUnit + financ + comAg) * (item.qc || 1);
+    return `
+      <tr style="border-bottom:1px solid rgba(42,42,56,0.3);">
+        <td style="color:var(--muted); font-size:11px;">${i+1}</td>
+        <td style="font-weight:600;">${item.desc || '—'}</td>
+        <td style="text-align:center; font-family:var(--font-mono);">${item.qc}</td>
+        <td style="text-align:right; font-family:var(--font-mono); color:var(--col-cost);">$${fmtN(costoUnitFinal)}</td>
+        <td style="text-align:right; font-family:var(--font-mono); color:var(--col-sale);">$${fmtN(ventaUnit + financ + comAg)}</td>
+        <td style="text-align:right; font-family:var(--font-mono); font-weight:700; color:var(--col-sale);">$${fmtN(ventaFinal)}</td>
+      </tr>`;
+  }).join('') || '<tr><td colspan="6" style="padding:16px; text-align:center; color:var(--muted);">Sin ítems</td></tr>';
+
+  document.getElementById('d-items').innerHTML = itemsHtml;
+  document.getElementById('detalle-modal').classList.add('open');
+}
+
+function closeDetalle() {
+  document.getElementById('detalle-modal').classList.remove('open');
+}
+document.getElementById('detalle-modal').addEventListener('click', e => {
+  if (e.target === document.getElementById('detalle-modal')) closeDetalle();
+});
+
+// ============================================================
+// UTILS
+// ============================================================
+function fmtN(n) {
+  if (isNaN(n) || !n) return '0';
+  return Math.round(n).toLocaleString('es-AR');
+}
+function toast(msg, type) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show ' + (type || '');
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+</script>
+</body>
+</html>

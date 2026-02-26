@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aprobados Piola</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0c0c0f;
+    --surface: #141418;
+    --surface2: #1c1c22;
+    --surface3: #242430;
+    --border: #2a2a38;
+    --accent: #c8ff57;
+    --danger: #ff5757;
+    --warn: #ffb857;
+    --text: #e8e8f0;
+    --muted: #6b6b80;
+    --muted2: #4a4a5a;
+    --col-cost: #ff8fa3;
+    --col-sale: #c8ff57;
+    --col-fin: #57c8ff;
+    --font-body: 'Syne', sans-serif;
+    --font-mono: 'DM Mono', monospace;
+    --font-display: 'DM Serif Display', serif;
+    --radius: 10px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: var(--font-body); font-size: 13px; min-height: 100vh; }
+
+  .topbar { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 28px; height: 56px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+  .logo { font-family: var(--font-display); font-size: 22px; letter-spacing: -0.5px; }
+  .logo span { color: var(--accent); }
+  .logo .role { font-family: var(--font-mono); font-size: 11px; color: var(--muted); margin-left: 10px; letter-spacing: 1px; text-transform: uppercase; }
+
+  .main { padding: 24px 28px; max-width: 1500px; margin: 0 auto; }
+
+  /* MÉTRICAS */
+  .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 22px; }
+  .metric-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 20px; }
+  .metric-label { font-size: 9px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+  .metric-value { font-family: var(--font-mono); font-size: 22px; font-weight: 500; }
+  .metric-sub { font-size: 10px; color: var(--muted); margin-top: 4px; font-family: var(--font-mono); }
+
+  /* PANEL */
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 16px; }
+  .panel-header { padding: 14px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; background: var(--surface2); flex-wrap: wrap; gap: 10px; }
+  .panel-title { font-size: 11px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: var(--muted); }
+  .panel-body { padding: 20px; }
+
+  .form-control { background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; color: var(--text); padding: 8px 12px; font-family: var(--font-body); font-size: 13px; outline: none; transition: border-color 0.2s; width: 100%; }
+  .form-control:focus { border-color: var(--accent); }
+  select.form-control option { background: var(--surface2); }
+
+  .btn { padding: 8px 16px; border-radius: 6px; border: none; cursor: pointer; font-family: var(--font-body); font-size: 12px; font-weight: 600; transition: all 0.2s; display: inline-flex; align-items: center; gap: 6px; }
+  .btn-primary { background: var(--accent); color: var(--bg); }
+  .btn-primary:hover { filter: brightness(1.1); }
+  .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+  .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-success { background: rgba(200,255,87,0.15); color: var(--accent); border: 1px solid rgba(200,255,87,0.3); }
+  .del-btn { background: none; border: none; color: var(--muted2); cursor: pointer; padding: 4px 8px; border-radius: 4px; font-size: 16px; transition: all 0.2s; }
+  .del-btn:hover { color: var(--danger); background: rgba(255,87,87,0.1); }
+
+  /* TABLA LISTA */
+  .table-wrapper { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; }
+  thead th { padding: 10px 12px; text-align: left; font-size: 9px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--border); white-space: nowrap; }
+  tbody tr { border-bottom: 1px solid rgba(42,42,56,0.5); transition: background 0.15s; }
+  tbody tr:hover { background: rgba(255,255,255,0.02); }
+  td { padding: 11px 12px; vertical-align: middle; }
+
+  /* ESTADO BADGES */
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 10px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; font-family: var(--font-mono); white-space: nowrap; }
+  .badge-pendiente   { background: rgba(255,184,87,0.15);  color: var(--warn);     border: 1px solid rgba(255,184,87,0.3); }
+  .badge-en-proceso  { background: rgba(87,200,255,0.15);  color: var(--col-fin);  border: 1px solid rgba(87,200,255,0.3); }
+  .badge-completada  { background: rgba(200,255,87,0.15);  color: var(--accent);   border: 1px solid rgba(200,255,87,0.3); }
+
+  /* MARGEN INDICATOR */
+  .margen-bar { height: 4px; border-radius: 2px; background: var(--surface3); margin-top: 4px; overflow: hidden; }
+  .margen-fill { height: 100%; border-radius: 2px; transition: width 0.4s; }
+
+  /* MODAL */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 200; align-items: flex-start; justify-content: center; padding: 20px; overflow-y: auto; }
+  .modal-overlay.open { display: flex; }
+  .modal-box { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); width: 100%; max-width: 1100px; margin: auto; }
+  .modal-header { padding: 20px 28px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: flex-start; background: var(--surface2); border-radius: var(--radius) var(--radius) 0 0; position: sticky; top: 0; z-index: 10; }
+  .modal-body { padding: 28px; }
+
+  /* SECCIÓN CONGELADA vs REAL */
+  .section-title { font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 14px; padding-bottom: 8px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; }
+  .frozen-badge { background: rgba(107,107,128,0.2); color: var(--muted); border: 1px solid rgba(107,107,128,0.3); border-radius: 4px; padding: 2px 6px; font-size: 9px; letter-spacing: 0.5px; }
+  .real-badge { background: rgba(200,255,87,0.1); color: var(--accent); border: 1px solid rgba(200,255,87,0.2); border-radius: 4px; padding: 2px 6px; font-size: 9px; letter-spacing: 0.5px; }
+
+  /* ITEMS REALES */
+  .item-real-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 10px; }
+  .item-real-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+  .item-real-nombre { font-size: 14px; font-weight: 700; }
+  .item-real-cant { font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+  .costos-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  .costo-field { display: flex; flex-direction: column; gap: 5px; }
+  .costo-field label { font-size: 9px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase; color: var(--muted); }
+  .costo-input { background: var(--surface3); border: 1px solid var(--border); border-radius: 6px; color: var(--text); padding: 7px 10px; font-family: var(--font-mono); font-size: 13px; outline: none; transition: border-color 0.2s; width: 100%; }
+  .costo-input:focus { border-color: var(--accent); }
+
+  /* COMPARATIVA POR PRODUCTO */
+  .prod-comp { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 12px; overflow: hidden; }
+  .prod-comp-title { padding: 12px 16px; background: var(--surface3); border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+  .prod-comp-name { font-size: 14px; font-weight: 700; }
+  .prod-comp-qty { font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+  .prod-comp-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .prod-comp-table th { padding: 8px 14px; font-size: 9px; font-weight: 700; letter-spacing: 0.7px; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--border); text-align: right; }
+  .prod-comp-table th:first-child { text-align: left; }
+  .prod-comp-table td { padding: 8px 14px; border-bottom: 1px solid rgba(42,42,56,0.3); text-align: right; font-family: var(--font-mono); }
+  .prod-comp-table td:first-child { text-align: left; font-family: var(--font-body); color: var(--muted); font-size: 12px; }
+  .prod-comp-table tr:last-child td { border-bottom: none; }
+  .prod-comp-table tr.subtotal td { background: rgba(42,42,56,0.3); font-weight: 700; }
+  .prod-comp-table tr.venta-row td { background: rgba(200,255,87,0.04); font-weight: 700; }
+  .diff-pos { color: var(--danger); }
+  .diff-neg { color: var(--accent); }
+
+  /* RESULTADO FINAL */
+  .resultado-box { border-radius: 10px; padding: 20px 24px; margin-bottom: 20px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+  .resultado-box.ganancia { background: rgba(200,255,87,0.06); border: 1px solid rgba(200,255,87,0.2); }
+  .resultado-box.perdida  { background: rgba(255,87,87,0.06);   border: 1px solid rgba(255,87,87,0.2); }
+  .resultado-box.neutral  { background: rgba(107,107,128,0.08); border: 1px solid rgba(107,107,128,0.2); }
+  .resultado-item { text-align: center; }
+  .resultado-label { font-size: 9px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+  .resultado-valor { font-family: var(--font-mono); font-size: 20px; font-weight: 700; }
+
+  .loading { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 12px; padding: 40px; justify-content: center; }
+  .spinner { width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; flex-shrink: 0; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .empty-state { padding: 60px; text-align: center; color: var(--muted); }
+  .empty-state .icon { font-size: 40px; margin-bottom: 14px; }
+
+  .toast { position: fixed; bottom: 24px; right: 24px; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 20px; font-size: 13px; z-index: 999; transform: translateY(80px); opacity: 0; transition: all 0.3s; max-width: 320px; }
+  .toast.show { transform: translateY(0); opacity: 1; }
+  .toast.success { border-color: rgba(200,255,87,0.4); }
+
+  .filters { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+
+  @media (max-width: 900px) {
+    .metrics { grid-template-columns: repeat(2,1fr); }
+    .costos-grid { grid-template-columns: repeat(2,1fr); }
+    .comparativa { grid-template-columns: 1fr; }
+    .resultado-box { grid-template-columns: repeat(2,1fr); }
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo">
+    Aprobados <span>·</span> Piola
+    <span class="role">Aprobados</span>
+  </div>
+  <span id="fb-status" style="font-size:11px; font-family:var(--font-mono); color:var(--muted);">⏳ conectando...</span>
+</div>
+
+<div class="main">
+
+  <!-- MÉTRICAS -->
+  <div class="metrics">
+    <div class="metric-card">
+      <div class="metric-label">Órdenes activas</div>
+      <div class="metric-value" id="m-activas" style="color:var(--col-fin);">—</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Completadas</div>
+      <div class="metric-value" id="m-completadas" style="color:var(--accent);">—</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Margen real promedio</div>
+      <div class="metric-value" id="m-margen" style="color:var(--accent);">—</div>
+      <div class="metric-sub" id="m-margen-sub"></div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Ganancia real total</div>
+      <div class="metric-value" id="m-ganancia" style="color:var(--accent);">—</div>
+    </div>
+  </div>
+
+  <!-- ÓRDENES ACTIVAS (pendiente + en proceso) -->
+  <div class="panel" style="margin-bottom:16px;">
+    <div class="panel-header">
+      <span class="panel-title">Órdenes en curso</span>
+      <div class="filters">
+        <input type="text" class="form-control" id="f-search" placeholder="🔍 Buscar..." oninput="applyFilters()" style="width:200px;">
+      </div>
+    </div>
+    <div class="panel-body" style="padding:0;">
+      <div id="loading-state" class="loading"><div class="spinner"></div> Cargando órdenes...</div>
+      <div class="table-wrapper" id="table-wrapper" style="display:none;">
+        <table>
+          <thead><tr>
+            <th>Orden</th><th>Cliente</th><th>Proyecto</th><th>Cotización</th>
+            <th style="text-align:right; color:var(--col-sale);">Venta</th>
+            <th style="text-align:right; color:var(--col-cost);">Costo presup.</th>
+            <th style="text-align:right;">Costo real</th>
+            <th style="text-align:center;">Margen real</th>
+            <th style="text-align:center;">Estado</th>
+            <th></th>
+          </tr></thead>
+          <tbody id="ordenes-tbody"></tbody>
+        </table>
+      </div>
+      <div id="empty-state" class="empty-state" style="display:none;">
+        <div class="icon">🏭</div>
+        No hay órdenes activas.<br>
+        <span style="font-size:11px; color:var(--muted2);">Las cotizaciones aprobadas en el Historial aparecen acá automáticamente.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ÓRDENES COMPLETADAS -->
+  <div class="panel">
+    <div class="panel-header">
+      <span class="panel-title">✅ Completadas</span>
+      <span id="completadas-count" style="font-size:11px; color:var(--muted); font-family:var(--font-mono);"></span>
+    </div>
+    <div class="panel-body" style="padding:0;">
+      <div class="table-wrapper">
+        <table>
+          <thead><tr>
+            <th>Orden</th><th>Cliente</th><th>Proyecto</th><th>Cotización</th>
+            <th style="text-align:right; color:var(--col-sale);">Venta</th>
+            <th style="text-align:right; color:var(--col-cost);">Costo presup.</th>
+            <th style="text-align:right;">Costo real</th>
+            <th style="text-align:center;">Margen real</th>
+            <th></th>
+          </tr></thead>
+          <tbody id="completadas-tbody"></tbody>
+        </table>
+      </div>
+      <div id="completadas-empty" class="empty-state" style="display:none;">
+        <div class="icon">📦</div>
+        Todavía no hay órdenes completadas.
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- MODAL ORDEN -->
+<div class="modal-overlay" id="orden-modal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div>
+        <div style="font-size:11px; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:var(--muted); margin-bottom:4px;" id="m-orden-id"></div>
+        <div style="font-size:20px; font-weight:700;" id="m-proyecto"></div>
+        <div style="font-size:12px; color:var(--muted); margin-top:4px;" id="m-cliente"></div>
+      </div>
+      <div style="display:flex; gap:10px; align-items:center;">
+        <select id="m-estado-select" onchange="cambiarEstadoOrden(this.value)"
+          style="background:var(--surface3); border:1px solid var(--border); border-radius:6px; color:var(--text); padding:7px 12px; font-family:var(--font-body); font-size:12px; font-weight:600; outline:none; cursor:pointer;">
+          <option value="pendiente">⏳ Pendiente</option>
+          <option value="en-proceso">🔄 En proceso</option>
+          <option value="completada">✅ Completada</option>
+        </select>
+        <button class="del-btn" style="font-size:22px;" onclick="closeModal()">×</button>
+      </div>
+    </div>
+    <div class="modal-body">
+
+      <!-- RESULTADO FINAL -->
+      <div id="resultado-box" class="resultado-box neutral" style="margin-bottom:20px;">
+        <div class="resultado-item">
+          <div class="resultado-label">Venta total</div>
+          <div class="resultado-valor" id="r-venta" style="color:var(--col-sale);">$—</div>
+        </div>
+        <div class="resultado-item">
+          <div class="resultado-label">Costo real total</div>
+          <div class="resultado-valor" id="r-costo-real" style="color:var(--col-cost);">$—</div>
+        </div>
+        <div class="resultado-item">
+          <div class="resultado-label">Ganancia real</div>
+          <div class="resultado-valor" id="r-ganancia">$—</div>
+        </div>
+        <div class="resultado-item">
+          <div class="resultado-label">Margen real</div>
+          <div class="resultado-valor" id="r-margen">—%</div>
+        </div>
+      </div>
+
+      <!-- COMPARATIVA POR PRODUCTO -->
+      <div class="section-title" style="margin-bottom:14px;">
+        Comparativa por producto
+        <span class="frozen-badge">presupuestado vs real</span>
+      </div>
+      <div id="comparativa-section" style="margin-bottom:24px;"></div>
+
+      <!-- CARGA DE COSTOS REALES POR ÍTEM -->
+      <div class="section-title">
+        Costos reales por ítem
+        <span class="real-badge">editable</span>
+      </div>
+      <div id="items-reales-container"></div>
+
+      <div style="display:flex; justify-content:flex-end; margin-top:16px;">
+        <button class="btn btn-primary" onclick="guardarCostosReales()">💾 Guardar costos reales</button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- FIREBASE -->
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import { getFirestore, collection, doc, onSnapshot, addDoc, updateDoc, query, orderBy, where } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAQNT8-8Q5v7Tfn9MIy530RSHdZj6Am390",
+  authDomain: "piola-cotizador.firebaseapp.com",
+  projectId: "piola-cotizador",
+  storageBucket: "piola-cotizador.firebasestorage.app",
+  messagingSenderId: "881054830595",
+  appId: "1:881054830595:web:3d138a4952bba717d63e36"
+};
+
+const app = initializeApp(firebaseConfig);
+const db  = getFirestore(app);
+window._db          = db;
+window._fbDoc       = doc;
+window._fbUpdateDoc = updateDoc;
+window._fbAddDoc    = addDoc;
+window._fbCollection= collection;
+
+const fbStatus = document.getElementById('fb-status');
+
+// Escuchar cotizaciones APROBADAS — crearles orden si no tienen
+onSnapshot(
+  query(collection(db, 'cotizaciones'), where('estado', '==', 'aprobada')),
+  async snap => {
+    for (const d of snap.docs) {
+      const cot = { firebaseId: d.id, ...d.data() };
+      if (!cot.ordenId) {
+        const ordenRef = await addDoc(collection(db, 'ordenes'), {
+          cotizacionId:  cot.firebaseId,
+          cotizacionNum: cot.id,
+          cliente:       cot.cliente,
+          proyecto:      cot.proyecto,
+          vendedor:      cot.vendedor || '—',
+          fecha:         cot.fecha,
+          items:         cot.items   || [],
+          globals:       cot.globals || {},
+          totalVenta:    cot.totalVenta || 0,
+          costosReales:  {},
+          estado:        'pendiente',
+          creadoEn:      new Date().toISOString(),
+        });
+        await updateDoc(doc(db, 'cotizaciones', cot.firebaseId), { ordenId: ordenRef.id });
+      }
+    }
+  }
+);
+
+// Escuchar órdenes — sin orderBy para evitar índice compuesto, ordenamos en cliente
+onSnapshot(
+  collection(db, 'ordenes'),
+  snap => {
+    window._ordenes = {};
+    snap.forEach(d => window._ordenes[d.id] = { firebaseId: d.id, ...d.data() });
+    fbStatus.textContent = '🟢 en vivo';
+    fbStatus.style.color = 'var(--accent)';
+    document.getElementById('loading-state').style.display = 'none';
+    document.getElementById('table-wrapper').style.display = 'block';
+    // Disparar evento para que el script regular actualice la vista
+    document.dispatchEvent(new CustomEvent('ordenes-updated'));
+  },
+  err => {
+    fbStatus.textContent = '🔴 error';
+    fbStatus.style.color = 'var(--danger)';
+    console.error(err);
+  }
+);
+</script>
+
+<script>
+window._ordenes = {};
+let ordenActivaId = null;
+
+document.addEventListener('ordenes-updated', () => {
+  applyFilters();
+  updateMetrics();
+});
+
+// ============================================================
+// CÁLCULOS
+// ============================================================
+function calcPresupuestado(orden) {
+  const g = orden.globals || {};
+  const cftP    = (g.cft      || 0) / 100;
+  const comP    = (g.comisionP|| 0) / 100;
+  const logBase = g.logisticaBase || 0;
+  const depoP   = (g.depoP    || 0) / 100;
+
+  let costoTotal = 0, ventaTotal = 0;
+  (orden.items || []).forEach(item => {
+    const qc     = item.qc    || 1;
+    const extra  = item.extra || 0;
+    const cantLog= item.cantLog || 0;
+    const cUnit  = item.costoUnit || 0;
+    const margenP= (item.margen || 30) / 100;
+
+    const cBase  = (qc + extra) * cUnit;
+    const log    = cantLog * logBase;
+    const depo   = cBase * depoP;
+    const cFinal = (cBase + log + depo) / qc;
+    const vUnit  = margenP < 1 ? cFinal / (1 - margenP) : cFinal;
+    const financ = vUnit * cftP;
+    const comAg  = (vUnit + financ) * comP;
+
+    costoTotal += (cBase + log + depo);
+    ventaTotal += (vUnit + financ + comAg) * qc;
+  });
+  return { costoTotal, ventaTotal, ganancia: ventaTotal - costoTotal };
+}
+
+function calcReal(orden) {
+  const cr = orden.costosReales || {};
+  let costoTotal = 0;
+  (orden.items || []).forEach((item, i) => {
+    const real = cr[i] || {};
+    const materiales = parseFloat(real.materiales) || 0;
+    const logistica  = parseFloat(real.logistica)  || 0;
+    const moObs      = parseFloat(real.moObs)      || 0; // mano de obra
+    const otros      = parseFloat(real.otros)      || 0;
+    costoTotal += materiales + logistica + moObs + otros;
+  });
+  const ventaTotal = orden.totalVenta || 0;
+  return { costoTotal, ventaTotal, ganancia: ventaTotal - costoTotal };
+}
+
+function tieneAlgunCostoReal(orden) {
+  const cr = orden.costosReales || {};
+  return Object.values(cr).some(r =>
+    parseFloat(r.materiales) || parseFloat(r.logistica) ||
+    parseFloat(r.moObs) || parseFloat(r.otros)
+  );
+}
+
+// ============================================================
+// MÉTRICAS
+// ============================================================
+function updateMetrics() {
+  const all = Object.values(window._ordenes);
+  const activas    = all.filter(o => o.estado !== 'completada').length;
+  const completadas= all.filter(o => o.estado === 'completada').length;
+
+  const conDatos = all.filter(o => tieneAlgunCostoReal(o));
+  let margenSum = 0;
+  let gananciaTotal = 0;
+  conDatos.forEach(o => {
+    const r = calcReal(o);
+    if (r.ventaTotal > 0) margenSum += (r.ganancia / r.ventaTotal * 100);
+    gananciaTotal += r.ganancia;
+  });
+  const margenProm = conDatos.length > 0 ? margenSum / conDatos.length : null;
+
+  document.getElementById('m-activas').textContent    = activas;
+  document.getElementById('m-completadas').textContent= completadas;
+  document.getElementById('m-margen').textContent     = margenProm !== null ? margenProm.toFixed(1) + '%' : '—';
+  document.getElementById('m-margen').style.color     = margenProm !== null ? (margenProm > 0 ? 'var(--accent)' : 'var(--danger)') : 'var(--muted)';
+  document.getElementById('m-margen-sub').textContent = conDatos.length > 0 ? 'sobre ' + conDatos.length + ' órdenes' : 'sin datos aún';
+  document.getElementById('m-ganancia').textContent   = gananciaTotal !== 0 ? '$' + fmtN(gananciaTotal) : '—';
+  document.getElementById('m-ganancia').style.color   = gananciaTotal >= 0 ? 'var(--accent)' : 'var(--danger)';
+}
+
+// ============================================================
+// FILTROS Y TABLA
+// ============================================================
+function applyFilters() {
+  const search = document.getElementById('f-search')?.value.toLowerCase() || '';
+  const all    = Object.values(window._ordenes)
+    .sort((a, b) => (b.creadoEn || '').localeCompare(a.creadoEn || ''));
+
+  const activas     = all.filter(o => o.estado !== 'completada' &&
+    (!search || (o.cliente||'').toLowerCase().includes(search) || (o.proyecto||'').toLowerCase().includes(search) || (o.cotizacionNum||'').toLowerCase().includes(search)));
+  const completadas = all.filter(o => o.estado === 'completada');
+
+  renderTabla(activas);
+  renderCompletadas(completadas);
+}
+
+function renderTabla(ordenes) {
+  const tbody = document.getElementById('ordenes-tbody');
+  const empty = document.getElementById('empty-state');
+  if (ordenes.length === 0) { empty.style.display = 'block'; tbody.innerHTML = ''; return; }
+  empty.style.display = 'none';
+  tbody.innerHTML = ordenes.map(o => renderOrdenFila(o, true)).join('');
+}
+
+function renderCompletadas(ordenes) {
+  const tbody = document.getElementById('completadas-tbody');
+  const empty = document.getElementById('completadas-empty');
+  const count = document.getElementById('completadas-count');
+  const ganTotal = ordenes.reduce((s,o) => { const r = calcReal(o); return s + (tieneAlgunCostoReal(o) ? r.ganancia : 0); }, 0);
+  count.textContent = ordenes.length + ' órdenes' + (ganTotal !== 0 ? ' · ganancia real: $' + fmtN(ganTotal) : '');
+  if (ordenes.length === 0) { empty.style.display = 'block'; tbody.innerHTML = ''; return; }
+  empty.style.display = 'none';
+  tbody.innerHTML = ordenes.map(o => renderOrdenFila(o, false)).join('');
+}
+
+function renderOrdenFila(o, showEstado) {
+  const pres = calcPresupuestado(o);
+  const real = tieneAlgunCostoReal(o) ? calcReal(o) : null;
+  const costoMostrar = real ? real.costoTotal : pres.costoTotal;
+  const margenReal   = real && real.ventaTotal > 0 ? (real.ganancia / real.ventaTotal * 100) : null;
+  const margenColor  = margenReal === null ? 'var(--muted2)' : margenReal >= 15 ? 'var(--accent)' : margenReal >= 0 ? 'var(--warn)' : 'var(--danger)';
+  const badgeClass   = { pendiente:'badge-pendiente', 'en-proceso':'badge-en-proceso', completada:'badge-completada' }[o.estado] || '';
+
+  return `<tr style="cursor:pointer;" onclick="openOrden('${o.firebaseId}')">
+    <td style="font-family:var(--font-mono); color:var(--accent); font-size:12px; white-space:nowrap;">${o.cotizacionNum||'—'}</td>
+    <td style="font-weight:600;">${o.cliente}</td>
+    <td style="color:var(--muted);">${o.proyecto}</td>
+    <td style="font-family:var(--font-mono); font-size:11px; color:var(--muted2);">${o.cotizacionNum||'—'}</td>
+    <td style="font-family:var(--font-mono); font-weight:700; color:var(--col-sale); text-align:right; white-space:nowrap;">$${fmtN(o.totalVenta||0)}</td>
+    <td style="font-family:var(--font-mono); color:var(--col-cost); text-align:right; white-space:nowrap;">$${fmtN(pres.costoTotal)}</td>
+    <td style="font-family:var(--font-mono); text-align:right; white-space:nowrap; color:${real ? 'var(--col-cost)' : 'var(--muted2)'};">${real ? '$'+fmtN(real.costoTotal) : '—'}</td>
+    <td style="text-align:center; min-width:90px;">
+      ${margenReal !== null ? `
+        <span style="font-family:var(--font-mono); font-size:12px; font-weight:700; color:${margenColor};">${margenReal.toFixed(1)}%</span>
+        <div class="margen-bar"><div class="margen-fill" style="width:${Math.min(Math.max(margenReal,0),60)/60*100}%; background:${margenColor};"></div></div>
+      ` : '<span style="color:var(--muted2); font-size:11px;">sin datos</span>'}
+    </td>
+    ${showEstado ? `<td style="text-align:center;"><span class="badge ${badgeClass}">${o.estado}</span></td>` : ''}
+    <td><button class="btn btn-secondary" style="font-size:11px; padding:5px 10px;" onclick="event.stopPropagation(); openOrden('${o.firebaseId}')">Abrir</button></td>
+  </tr>`;
+}
+// ============================================================
+// MODAL ORDEN
+// ============================================================
+function openOrden(firebaseId) {
+  ordenActivaId = firebaseId;
+  const o = window._ordenes[firebaseId];
+  if (!o) return;
+
+  document.getElementById('m-orden-id').textContent  = 'OP-' + o.cotizacionNum + ' · ' + (o.fecha || '');
+  document.getElementById('m-proyecto').textContent  = o.proyecto;
+  document.getElementById('m-cliente').textContent   = o.cliente + (o.vendedor ? ' · Vendedor: ' + o.vendedor : '');
+  document.getElementById('m-estado-select').value   = o.estado || 'pendiente';
+
+  renderResultado(o);
+  renderComparativa(o);
+  renderItemsReales(o);
+  document.getElementById('orden-modal').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('orden-modal').classList.remove('open');
+  ordenActivaId = null;
+}
+document.getElementById('orden-modal').addEventListener('click', e => {
+  if (e.target === document.getElementById('orden-modal')) closeModal();
+});
+
+function renderResultado(o) {
+  const pres = calcPresupuestado(o);
+  const real = tieneAlgunCostoReal(o) ? calcReal(o) : null;
+  const venta = o.totalVenta || 0;
+
+  const costoMostrar  = real ? real.costoTotal  : pres.costoTotal;
+  const gananciaMostrar = venta - costoMostrar;
+  const margenMostrar   = venta > 0 ? (gananciaMostrar / venta * 100) : 0;
+  const tieneReal       = !!real;
+
+  const box = document.getElementById('resultado-box');
+  box.className = 'resultado-box ' + (gananciaMostrar > 0 ? 'ganancia' : gananciaMostrar < 0 ? 'perdida' : 'neutral');
+
+  const margenColor = margenMostrar >= 15 ? 'var(--accent)' : margenMostrar >= 0 ? 'var(--warn)' : 'var(--danger)';
+
+  document.getElementById('r-venta').textContent     = '$' + fmtN(venta);
+  document.getElementById('r-costo-real').textContent= (tieneReal ? '' : '~') + '$' + fmtN(costoMostrar);
+  document.getElementById('r-ganancia').textContent  = (gananciaMostrar >= 0 ? '+' : '') + '$' + fmtN(gananciaMostrar);
+  document.getElementById('r-ganancia').style.color  = margenColor;
+  document.getElementById('r-margen').textContent    = margenMostrar.toFixed(1) + '%';
+  document.getElementById('r-margen').style.color    = margenColor;
+}
+
+function renderComparativa(o) {
+  const g  = o.globals || {};
+  const cr = o.costosReales || {};
+  const cftP  = (g.cft       || 0) / 100;
+  const comP  = (g.comisionP || 0) / 100;
+  const logBase = g.logisticaBase || 0;
+  const depoP   = (g.depoP   || 0) / 100;
+
+  const $ = (v, color) => `<span style="color:${color||'var(--text)'}; font-family:var(--font-mono);">$${fmtN(v)}</span>`;
+  const pct = (v, color) => `<span style="color:${color||'var(--muted)'}; font-size:11px;">${v.toFixed(1)}%</span>`;
+
+  function diff(real, pres) {
+    if (real === null || real === undefined) return '<span style="color:var(--muted2);">—</span>';
+    const d = real - pres;
+    const cls = d > 0 ? 'diff-pos' : d < 0 ? 'diff-neg' : '';
+    return `<span class="${cls}">${d > 0 ? '+' : ''}$${fmtN(d)}</span>`;
+  }
+
+  let totalVentaPres = 0, totalCostoPres = 0, totalCostoReal = 0, totalVentaReal = 0;
+
+  const cards = (o.items || []).map((item, i) => {
+    const qc      = item.qc    || 1;
+    const extra   = item.extra || 0;
+    const cantLog = item.cantLog || 0;
+    const cUnit   = item.costoUnit || 0;
+    const margenP = (item.margen || 30) / 100;
+
+    // ---- PRESUPUESTADO ----
+    const cBase   = (qc + extra) * cUnit;            // costo base materiales
+    const logCost = cantLog * logBase;                // logística
+    const depCost = cBase * depoP;                   // depósito
+    const cTotalP = cBase + logCost + depCost;        // costo total presup
+    const cUnitP  = cTotalP / qc;                    // costo unit con todo
+    const vUnit   = margenP < 1 ? cUnitP / (1 - margenP) : cUnitP; // precio venta sin financ
+    const financ  = vUnit * cftP;                    // financiación
+    const comAg   = (vUnit + financ) * comP;         // comisión
+    const vFinal  = (vUnit + financ + comAg) * qc;   // venta final
+
+    totalVentaPres += vFinal;
+    totalCostoPres += cTotalP;
+
+    // ---- REAL ----
+    const real = cr[i] || {};
+    const rMat   = parseFloat(real.materiales) || null;
+    const rLog   = parseFloat(real.logistica)  || null;
+    const rMO    = parseFloat(real.moObs)      || null;
+    const rOtros = parseFloat(real.otros)      || null;
+    const hayReal = rMat !== null || rLog !== null || rMO !== null || rOtros !== null;
+    const rMatV   = rMat   || 0;
+    const rLogV   = rLog   || 0;
+    const rMOV    = rMO    || 0;
+    const rOtrosV = rOtros || 0;
+    const rTotal  = rMatV + rLogV + rMOV + rOtrosV;
+    const rGanancia = hayReal ? vFinal - rTotal : null;
+    const rMargen   = hayReal && vFinal > 0 ? (rGanancia / vFinal * 100) : null;
+
+    if (hayReal) { totalCostoReal += rTotal; totalVentaReal += vFinal; }
+
+    const margenPresColor = ((vFinal - cTotalP)/vFinal*100) >= 15 ? 'var(--accent)' : 'var(--warn)';
+    const margenRealColor = rMargen === null ? 'var(--muted2)' : rMargen >= 15 ? 'var(--accent)' : rMargen >= 0 ? 'var(--warn)' : 'var(--danger)';
+
+    const row = (label, presVal, realVal, presColor, realColor, isDiff) => `
+      <tr>
+        <td>${label}</td>
+        <td>${$(presVal, presColor)}</td>
+        <td>${realVal !== null ? $(realVal, realColor) : '<span style="color:var(--muted2);">—</span>'}</td>
+        <td>${isDiff ? diff(realVal, presVal) : ''}</td>
+      </tr>`;
+
+    return `
+    <div class="prod-comp">
+      <div class="prod-comp-title">
+        <div>
+          <div class="prod-comp-name">${item.desc || 'Ítem '+(i+1)}</div>
+          <div class="prod-comp-qty">Cantidad: ${qc} u.</div>
+        </div>
+        <div style="text-align:right;">
+          ${hayReal && rGanancia !== null ? `
+            <div style="font-size:11px; color:var(--muted); margin-bottom:2px;">Ganancia real</div>
+            <div style="font-family:var(--font-mono); font-size:16px; font-weight:700; color:${margenRealColor};">${rGanancia >= 0 ? '+' : ''}$${fmtN(rGanancia)} <span style="font-size:12px;">(${rMargen.toFixed(1)}%)</span></div>
+          ` : `<span style="font-size:11px; color:var(--muted2);">Sin costos reales cargados</span>`}
+        </div>
+      </div>
+      <table class="prod-comp-table">
+        <thead>
+          <tr>
+            <th style="text-align:left; width:40%;">Concepto</th>
+            <th>Presupuestado</th>
+            <th>Real</th>
+            <th>Diferencia</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${row('Costo materiales ('+qc+(extra?'+'+extra:'')+' u. × $'+fmtN(cUnit)+')', cBase, rMat, 'var(--col-cost)', 'var(--col-cost)', true)}
+          ${row('Logística ('+cantLog+' × $'+fmtN(logBase)+')', logCost, rLog, 'var(--col-cost)', 'var(--col-cost)', true)}
+          ${row('Depósito/Acopio ('+g.depoP+'%)', depCost, null, 'var(--col-cost)', '', false)}
+          ${row('Mano de obra', 0, rMO, 'var(--muted2)', 'var(--col-cost)', false)}
+          ${row('Otros / Imprevistos', 0, rOtros, 'var(--muted2)', 'var(--col-cost)', false)}
+          <tr class="subtotal">
+            <td>Costo total</td>
+            <td>${$(cTotalP, 'var(--col-cost)')}</td>
+            <td>${hayReal ? $(rTotal, 'var(--col-cost)') : '<span style="color:var(--muted2);">—</span>'}</td>
+            <td>${hayReal ? diff(rTotal, cTotalP) : ''}</td>
+          </tr>
+          <tr>
+            <td style="color:var(--muted);">Margen aplicado (${(margenP*100).toFixed(0)}%)</td>
+            <td>${$(vUnit * qc, 'var(--text)')}</td>
+            <td>—</td><td></td>
+          </tr>
+          <tr>
+            <td style="color:var(--muted);">Financiación CFT (${g.cft || 0}%)</td>
+            <td>${$(financ * qc, 'var(--col-fin)')}</td>
+            <td>—</td><td></td>
+          </tr>
+          <tr>
+            <td style="color:var(--muted);">Comisión agencia (${g.comisionP || 0}%)</td>
+            <td>${$(comAg * qc, 'var(--col-fin)')}</td>
+            <td>—</td><td></td>
+          </tr>
+          <tr class="venta-row">
+            <td style="color:var(--col-sale); font-weight:700;">Venta final (${qc} u.)</td>
+            <td>${$(vFinal, 'var(--col-sale)')}</td>
+            <td>${$(vFinal, 'var(--col-sale)')}</td>
+            <td>${pct((vFinal-cTotalP)/vFinal*100, margenPresColor)} presup. ${rMargen !== null ? '/ '+pct(rMargen, margenRealColor)+' real' : ''}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>`;
+  }).join('');
+
+  // Totales generales
+  const totalGanPres  = totalVentaPres - totalCostoPres;
+  const totalGanReal  = totalCostoReal > 0 ? totalVentaReal - totalCostoReal : null;
+  const totalMPres    = totalVentaPres > 0 ? (totalGanPres / totalVentaPres * 100) : 0;
+  const totalMReal    = totalGanReal !== null && totalVentaReal > 0 ? (totalGanReal / totalVentaReal * 100) : null;
+  const tMRealColor   = totalMReal === null ? 'var(--muted2)' : totalMReal >= 15 ? 'var(--accent)' : totalMReal >= 0 ? 'var(--warn)' : 'var(--danger)';
+
+  const totales = `
+    <div style="background:var(--surface3); border:1px solid var(--border); border-radius:8px; padding:16px 20px; display:grid; grid-template-columns:repeat(4,1fr); gap:16px; text-align:center;">
+      <div>
+        <div style="font-size:9px; font-weight:700; letter-spacing:0.8px; text-transform:uppercase; color:var(--muted); margin-bottom:6px;">Venta total</div>
+        <div style="font-family:var(--font-mono); font-size:18px; font-weight:700; color:var(--col-sale);">$${fmtN(totalVentaPres)}</div>
+      </div>
+      <div>
+        <div style="font-size:9px; font-weight:700; letter-spacing:0.8px; text-transform:uppercase; color:var(--muted); margin-bottom:6px;">Costo presup.</div>
+        <div style="font-family:var(--font-mono); font-size:18px; font-weight:700; color:var(--col-cost);">$${fmtN(totalCostoPres)}</div>
+        <div style="font-size:11px; color:var(--muted); margin-top:2px; font-family:var(--font-mono);">Margen: ${totalMPres.toFixed(1)}%</div>
+      </div>
+      <div>
+        <div style="font-size:9px; font-weight:700; letter-spacing:0.8px; text-transform:uppercase; color:var(--muted); margin-bottom:6px;">Costo real</div>
+        <div style="font-family:var(--font-mono); font-size:18px; font-weight:700; color:${totalCostoReal > 0 ? 'var(--col-cost)' : 'var(--muted2)'};">${totalCostoReal > 0 ? '$'+fmtN(totalCostoReal) : '—'}</div>
+        ${totalMReal !== null ? `<div style="font-size:11px; color:${tMRealColor}; margin-top:2px; font-family:var(--font-mono);">Margen: ${totalMReal.toFixed(1)}%</div>` : ''}
+      </div>
+      <div>
+        <div style="font-size:9px; font-weight:700; letter-spacing:0.8px; text-transform:uppercase; color:var(--muted); margin-bottom:6px;">Ganancia real</div>
+        <div style="font-family:var(--font-mono); font-size:18px; font-weight:700; color:${tMRealColor};">${totalGanReal !== null ? (totalGanReal >= 0 ? '+' : '')+'$'+fmtN(totalGanReal) : '—'}</div>
+      </div>
+    </div>`;
+
+  document.getElementById('comparativa-section').innerHTML = cards + totales;
+}
+
+function renderItemsReales(o) {
+  const cr = o.costosReales || {};
+  const container = document.getElementById('items-reales-container');
+
+  container.innerHTML = (o.items || []).map((item, i) => {
+    const real = cr[i] || {};
+    const pres = calcItemPresup(item, o.globals || {});
+    return `
+    <div class="item-real-card">
+      <div class="item-real-header">
+        <div>
+          <div class="item-real-nombre">${item.desc || 'Ítem ' + (i+1)}</div>
+          <div class="item-real-cant">Cantidad: ${item.qc} u. · Costo presup. unit.: $${fmtN(item.costoUnit)} · Venta presup.: $${fmtN(pres.ventaFinal)}</div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:9px; text-transform:uppercase; letter-spacing:0.6px; color:var(--muted); margin-bottom:2px;">Costo presup. total</div>
+          <div style="font-family:var(--font-mono); font-size:15px; color:var(--col-cost);">$${fmtN(pres.costoTotalItem)}</div>
+        </div>
+      </div>
+      <div class="costos-grid">
+        <div class="costo-field">
+          <label>Materiales / Producción $</label>
+          <input type="number" class="costo-input" id="real-${i}-materiales" value="${real.materiales||''}" placeholder="0" min="0" step="100" oninput="previewReal()">
+        </div>
+        <div class="costo-field">
+          <label>Logística $</label>
+          <input type="number" class="costo-input" id="real-${i}-logistica" value="${real.logistica||''}" placeholder="0" min="0" step="100" oninput="previewReal()">
+        </div>
+        <div class="costo-field">
+          <label>Mano de obra $</label>
+          <input type="number" class="costo-input" id="real-${i}-moObs" value="${real.moObs||''}" placeholder="0" min="0" step="100" oninput="previewReal()">
+        </div>
+        <div class="costo-field">
+          <label>Otros / Imprevistos $</label>
+          <input type="number" class="costo-input" id="real-${i}-otros" value="${real.otros||''}" placeholder="0" min="0" step="100" oninput="previewReal()">
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function calcItemPresup(item, g) {
+  const qc     = item.qc || 1;
+  const extra  = item.extra || 0;
+  const cantLog= item.cantLog || 0;
+  const cUnit  = item.costoUnit || 0;
+  const margenP= (item.margen || 30) / 100;
+  const cftP   = (g.cft       || 0) / 100;
+  const comP   = (g.comisionP || 0) / 100;
+  const logBase= g.logisticaBase || 0;
+  const depoP  = (g.depoP     || 0) / 100;
+
+  const cBase      = (qc + extra) * cUnit;
+  const log        = cantLog * logBase;
+  const depo       = cBase * depoP;
+  const costoTotalItem = cBase + log + depo;
+  const cFinal     = costoTotalItem / qc;
+  const vUnit      = margenP < 1 ? cFinal / (1 - margenP) : cFinal;
+  const financ     = vUnit * cftP;
+  const comAg      = (vUnit + financ) * comP;
+  const ventaFinal = (vUnit + financ + comAg) * qc;
+  return { costoTotalItem, ventaFinal };
+}
+
+function previewReal() {
+  const o = window._ordenes[ordenActivaId];
+  if (!o) return;
+  const cr = collectCostosReales(o);
+  const tempOrden = { ...o, costosReales: cr };
+  renderResultado(tempOrden);
+  renderComparativa(tempOrden);
+}
+
+function collectCostosReales(o) {
+  const cr = {};
+  (o.items || []).forEach((_, i) => {
+    cr[i] = {
+      materiales: parseFloat(document.getElementById(`real-${i}-materiales`)?.value) || 0,
+      logistica:  parseFloat(document.getElementById(`real-${i}-logistica`)?.value)  || 0,
+      moObs:      parseFloat(document.getElementById(`real-${i}-moObs`)?.value)      || 0,
+      otros:      parseFloat(document.getElementById(`real-${i}-otros`)?.value)       || 0,
+    };
+  });
+  return cr;
+}
+
+async function guardarCostosReales() {
+  const o = window._ordenes[ordenActivaId];
+  if (!o) return;
+  const cr = collectCostosReales(o);
+  try {
+    await window._fbUpdateDoc(window._fbDoc(window._db, 'ordenes', ordenActivaId), {
+      costosReales: cr,
+      actualizadoEn: new Date().toISOString(),
+    });
+    toast('✓ Costos reales guardados', 'success');
+    // Actualizar la comparativa con los nuevos datos
+    const updatedOrden = { ...o, costosReales: cr };
+    renderComparativa(updatedOrden);
+  } catch(e) { toast('Error: ' + e.message, ''); }
+}
+
+async function cambiarEstadoOrden(nuevoEstado) {
+  if (!ordenActivaId) return;
+  try {
+    await window._fbUpdateDoc(window._fbDoc(window._db, 'ordenes', ordenActivaId), { estado: nuevoEstado });
+    toast('Estado actualizado', 'success');
+  } catch(e) { toast('Error: ' + e.message, ''); }
+}
+
+// ============================================================
+// UTILS
+// ============================================================
+function fmtN(n) {
+  if (isNaN(n) || n === undefined || n === null) return '0';
+  return Math.round(n).toLocaleString('es-AR');
+}
+function toast(msg, type) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show ' + (type || '');
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+</script>
+</body>
+</html>

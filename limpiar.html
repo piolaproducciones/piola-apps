@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Limpiar Base de Datos · Piola</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:#0c0c0f; color:#e8e8f0; font-family:'Syne',sans-serif; min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px; }
+  .card { background:#141418; border:1px solid #2a2a38; border-radius:12px; padding:36px; max-width:520px; width:100%; text-align:center; }
+  h1 { font-size:22px; font-weight:700; margin-bottom:8px; }
+  .sub { color:#6b6b80; font-size:13px; margin-bottom:28px; line-height:1.6; }
+  .collections { display:flex; flex-direction:column; gap:8px; margin-bottom:28px; text-align:left; }
+  .col-row { background:#1c1c22; border:1px solid #2a2a38; border-radius:8px; padding:12px 16px; display:flex; justify-content:space-between; align-items:center; font-size:13px; }
+  .col-name { font-family:'DM Mono',monospace; color:#c8ff57; }
+  .col-count { font-family:'DM Mono',monospace; color:#6b6b80; font-size:12px; }
+  .btn-danger { background:#ff5757; color:#fff; border:none; border-radius:8px; padding:14px 28px; font-family:'Syne',sans-serif; font-size:14px; font-weight:700; cursor:pointer; width:100%; transition:filter 0.2s; }
+  .btn-danger:hover:not(:disabled) { filter:brightness(1.1); }
+  .btn-danger:disabled { opacity:0.4; cursor:not-allowed; }
+  .log { margin-top:20px; background:#0a0a0f; border:1px solid #2a2a38; border-radius:8px; padding:14px; text-align:left; max-height:200px; overflow-y:auto; font-family:'DM Mono',monospace; font-size:11px; display:none; }
+  .log-line { padding:2px 0; }
+  .log-line.ok  { color:#c8ff57; }
+  .log-line.err { color:#ff5757; }
+  .log-line.inf { color:#6b6b80; }
+  .warning { background:rgba(255,87,87,0.08); border:1px solid rgba(255,87,87,0.3); border-radius:8px; padding:12px 16px; margin-bottom:24px; font-size:12px; color:#ff8fa3; line-height:1.6; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div style="font-size:36px; margin-bottom:12px;">🗑️</div>
+  <h1>Limpiar Base de Datos</h1>
+  <p class="sub">Borra todos los documentos de las colecciones de prueba para empezar con datos limpios.</p>
+
+  <div class="warning">
+    ⚠️ Esta acción es <strong>irreversible</strong>. Todos los datos de cotizaciones, órdenes y el historial de pruebas serán eliminados permanentemente. Los materiales y productos del maestro <strong>no</strong> se borran.
+  </div>
+
+  <div class="collections" id="collections-info">
+    <div class="col-row"><span class="col-name">cotizaciones</span><span class="col-count" id="count-cot">contando...</span></div>
+    <div class="col-row"><span class="col-name">ordenes</span><span class="col-count" id="count-ord">contando...</span></div>
+  </div>
+
+  <button class="btn-danger" id="btn-limpiar" onclick="confirmarLimpieza()" disabled>
+    🗑️ Borrar todo y empezar de cero
+  </button>
+
+  <div class="log" id="log"></div>
+</div>
+
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import { getFirestore, collection, getDocs, deleteDoc, doc } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAQNT8-8Q5v7Tfn9MIy530RSHdZj6Am390",
+  authDomain: "piola-cotizador.firebaseapp.com",
+  projectId: "piola-cotizador",
+  storageBucket: "piola-cotizador.firebasestorage.app",
+  messagingSenderId: "881054830595",
+  appId: "1:881054830595:web:3d138a4952bba717d63e36"
+};
+
+const app = initializeApp(firebaseConfig);
+const db  = getFirestore(app);
+
+function log(msg, type='inf') {
+  const el = document.getElementById('log');
+  el.style.display = 'block';
+  const line = document.createElement('div');
+  line.className = 'log-line ' + type;
+  line.textContent = new Date().toLocaleTimeString('es-AR') + ' ' + msg;
+  el.appendChild(line);
+  el.scrollTop = el.scrollHeight;
+}
+
+async function countCollection(name, elId) {
+  try {
+    const snap = await getDocs(collection(db, name));
+    document.getElementById(elId).textContent = snap.size + ' documentos';
+    return snap.size;
+  } catch(e) {
+    document.getElementById(elId).textContent = 'error';
+    return 0;
+  }
+}
+
+async function deleteCollection(name) {
+  const snap = await getDocs(collection(db, name));
+  let deleted = 0;
+  for (const d of snap.docs) {
+    await deleteDoc(doc(db, name, d.id));
+    deleted++;
+    log(`  Borrado: ${name}/${d.id.slice(0,8)}...`, 'inf');
+  }
+  return deleted;
+}
+
+// Contar al cargar
+window.addEventListener('load', async () => {
+  const c1 = await countCollection('cotizaciones', 'count-cot');
+  const c2 = await countCollection('ordenes', 'count-ord');
+  document.getElementById('btn-limpiar').disabled = false;
+});
+
+window.confirmarLimpieza = async () => {
+  if (!confirm('¿Estás seguro? Se borrarán TODAS las cotizaciones y órdenes. Esta acción no se puede deshacer.')) return;
+
+  const btn = document.getElementById('btn-limpiar');
+  btn.disabled = true;
+  btn.textContent = '⏳ Borrando...';
+
+  try {
+    log('Iniciando limpieza...', 'inf');
+
+    log('Borrando cotizaciones...', 'inf');
+    const c1 = await deleteCollection('cotizaciones');
+    log(`✓ ${c1} cotizaciones eliminadas`, 'ok');
+
+    log('Borrando órdenes...', 'inf');
+    const c2 = await deleteCollection('ordenes');
+    log(`✓ ${c2} órdenes eliminadas`, 'ok');
+
+    log('✅ Limpieza completada. Podés cerrar esta página.', 'ok');
+
+    btn.textContent = '✓ Listo — base limpia';
+    btn.style.background = '#c8ff57';
+    btn.style.color = '#0c0c0f';
+
+    document.getElementById('count-cot').textContent = '0 documentos';
+    document.getElementById('count-ord').textContent = '0 documentos';
+
+  } catch(e) {
+    log('❌ Error: ' + e.message, 'err');
+    btn.disabled = false;
+    btn.textContent = '🗑️ Reintentar';
+  }
+};
+</script>
+</body>
+</html>
