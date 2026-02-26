@@ -1244,6 +1244,16 @@ function autocompletarProducto(itemId, nombre) {
   if (!item) return;
   if (match.costoTotal > 0) item.costoUnit = match.costoTotal;
   if (match.proveedor)      item.proveedor = match.proveedor;
+  // Guardar receta si el producto tiene componentes (no se muestra, solo se usa en Aprobados)
+  if (match.componentes && match.componentes.length > 0) {
+    item.receta = match.componentes.map(c => ({
+      nombre:   c.nombre,
+      cantidad: c.cantidad,
+      costoUnit: c.costoUnit,
+    }));
+  } else {
+    item.receta = null;
+  }
   recalcAll();
 }
 

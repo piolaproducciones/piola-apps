@@ -595,6 +595,19 @@ function renderItemsReales(o) {
   container.innerHTML = (o.items || []).map((item, i) => {
     const real = cr[i] || {};
     const pres = calcItemPresup(item, o.globals || {});
+    const tieneReceta = item.receta && item.receta.length > 0;
+
+    const camposMateriales = tieneReceta
+      ? item.receta.map((mat, mi) => `
+        <div class="costo-field">
+          <label>${mat.nombre} <span style="color:var(--muted); font-size:10px;">(${mat.cantidad} u. × $${fmtN(mat.costoUnit)} presup.)</span></label>
+          <input type="number" class="costo-input" id="real-${i}-mat-${mi}" value="${(real.materiales_receta && real.materiales_receta[mi]) || ''}" placeholder="0" min="0" step="100" oninput="previewReal()">
+        </div>`).join('')
+      : `<div class="costo-field">
+          <label>Materiales / Producción $</label>
+          <input type="number" class="costo-input" id="real-${i}-materiales" value="${real.materiales||''}" placeholder="0" min="0" step="100" oninput="previewReal()">
+        </div>`;
+
     return `
     <div class="item-real-card">
       <div class="item-real-header">
@@ -604,10 +617,7 @@ function renderItemsReales(o) {
         </div>
       </div>
       <div class="costos-grid">
-        <div class="costo-field">
-          <label>Materiales / Producción $</label>
-          <input type="number" class="costo-input" id="real-${i}-materiales" value="${real.materiales||''}" placeholder="0" min="0" step="100" oninput="previewReal()">
-        </div>
+        ${camposMateriales}
         <div class="costo-field">
           <label>Logística $</label>
           <input type="number" class="costo-input" id="real-${i}-logistica" value="${real.logistica||''}" placeholder="0" min="0" step="100" oninput="previewReal()">
@@ -658,13 +668,22 @@ function previewReal() {
 
 function collectCostosReales(o) {
   const cr = {};
-  (o.items || []).forEach((_, i) => {
-    cr[i] = {
-      materiales: parseFloat(document.getElementById(`real-${i}-materiales`)?.value) || 0,
-      logistica:  parseFloat(document.getElementById(`real-${i}-logistica`)?.value)  || 0,
-      extras:     parseFloat(document.getElementById(`real-${i}-extras`)?.value)     || 0,
-      obsExtras:  document.getElementById(`real-${i}-obsExtras`)?.value || '',
+  (o.items || []).forEach((item, i) => {
+    const tieneReceta = item.receta && item.receta.length > 0;
+    const entry = {
+      logistica: parseFloat(document.getElementById(`real-${i}-logistica`)?.value) || 0,
+      extras:    parseFloat(document.getElementById(`real-${i}-extras`)?.value)    || 0,
+      obsExtras: document.getElementById(`real-${i}-obsExtras`)?.value || '',
     };
+    if (tieneReceta) {
+      entry.materiales_receta = item.receta.map((_, mi) =>
+        parseFloat(document.getElementById(`real-${i}-mat-${mi}`)?.value) || 0
+      );
+      entry.materiales = entry.materiales_receta.reduce((s, v) => s + v, 0);
+    } else {
+      entry.materiales = parseFloat(document.getElementById(`real-${i}-materiales`)?.value) || 0;
+    }
+    cr[i] = entry;
   });
   return cr;
 }
