@@ -310,7 +310,7 @@
 <!-- FIREBASE -->
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import { getFirestore, collection, doc, onSnapshot, addDoc, updateDoc, query, orderBy, where } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import { getFirestore, collection, doc, onSnapshot, addDoc, updateDoc } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
 const firebaseConfig = {
   apiKey: "AIzaSyAQNT8-8Q5v7Tfn9MIy530RSHdZj6Am390",
@@ -331,13 +331,13 @@ window._fbCollection= collection;
 
 const fbStatus = document.getElementById('fb-status');
 
-// Escuchar cotizaciones APROBADAS — crearles orden si no tienen
+// Escuchar TODAS las cotizaciones y filtrar aprobadas en cliente (evita necesidad de índice)
 onSnapshot(
-  query(collection(db, 'cotizaciones'), where('estado', '==', 'aprobada')),
+  collection(db, 'cotizaciones'),
   async snap => {
     for (const d of snap.docs) {
       const cot = { firebaseId: d.id, ...d.data() };
-      if (!cot.ordenId) {
+      if (cot.estado === 'aprobada' && !cot.ordenId) {
         const ordenRef = await addDoc(collection(db, 'ordenes'), {
           cotizacionId:  cot.firebaseId,
           cotizacionNum: cot.id,
