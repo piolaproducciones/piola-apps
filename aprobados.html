@@ -274,18 +274,18 @@
     </div>
     <div class="modal-body">
 
-      <!-- RESULTADO FINAL -->
+      <!-- RESULTADO RÁPIDO -->
       <div id="resultado-box" class="resultado-box neutral" style="margin-bottom:20px;">
         <div class="resultado-item">
-          <div class="resultado-label">Venta total</div>
+          <div class="resultado-label">Venta</div>
           <div class="resultado-valor" id="r-venta" style="color:var(--col-sale);">$—</div>
         </div>
         <div class="resultado-item">
-          <div class="resultado-label">Costo real total</div>
+          <div class="resultado-label">Costo real</div>
           <div class="resultado-valor" id="r-costo-real" style="color:var(--col-cost);">$—</div>
         </div>
         <div class="resultado-item">
-          <div class="resultado-label">Ganancia real</div>
+          <div class="resultado-label">Ganancia</div>
           <div class="resultado-valor" id="r-ganancia">$—</div>
         </div>
         <div class="resultado-item">
@@ -294,22 +294,11 @@
         </div>
       </div>
 
-      <!-- COMPARATIVA POR PRODUCTO -->
-      <div class="section-title" style="margin-bottom:14px;">
-        Comparativa por producto
-        <span class="frozen-badge">presupuestado vs real</span>
-      </div>
-      <div id="comparativa-section" style="margin-bottom:24px;"></div>
-
-      <!-- CARGA DE COSTOS REALES POR ÍTEM -->
-      <div class="section-title">
-        Costos reales por ítem
-        <span class="real-badge">editable</span>
-      </div>
+      <!-- CARGA DE COSTOS — mínima -->
       <div id="items-reales-container"></div>
 
       <div style="display:flex; justify-content:flex-end; margin-top:16px;">
-        <button class="btn btn-primary" onclick="guardarCostosReales()">💾 Guardar costos reales</button>
+        <button class="btn btn-primary" onclick="guardarCostosReales()">💾 Guardar costos</button>
       </div>
 
     </div>
@@ -759,42 +748,45 @@ function renderItemsReales(o) {
   const container = document.getElementById('items-reales-container');
 
   container.innerHTML = (o.items || []).map((item, i) => {
-    const real = cr[i] || {};
-    const pres = calcItemPresup(item, o.globals || {});
-    return `
-    <div class="item-real-card">
-      <div class="item-real-header">
+    const r = cr[i] || {};
+    const rMat = r.materiales || '';
+    const rLog = r.logistica  || '';
+    const rMO  = r.moObs      || '';
+    const rOtros = r.otros    || '';
+    const total = (parseFloat(rMat)||0)+(parseFloat(rLog)||0)+(parseFloat(rMO)||0)+(parseFloat(rOtros)||0);
+
+    return `<div style="border:1px solid var(--border); border-radius:8px; padding:14px 16px; margin-bottom:8px;">
+      <div style="font-size:13px; font-weight:700; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center;">
+        <span>${item.desc || 'Ítem '+(i+1)} <span style="color:var(--muted); font-size:11px; font-weight:400;">× ${item.qc}</span></span>
+        ${total > 0 ? `<span style="font-family:var(--font-mono); font-size:12px; color:var(--col-cost);">$${fmtN(total)}</span>` : ''}
+      </div>
+      <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:8px;">
         <div>
-          <div class="item-real-nombre">${item.desc || 'Ítem ' + (i+1)}</div>
-          <div class="item-real-cant">Cantidad: ${item.qc} u. · Costo presup. unit.: $${fmtN(item.costoUnit)} · Venta presup.: $${fmtN(pres.ventaFinal)}</div>
+          <div style="font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:var(--muted); margin-bottom:4px;">Materiales</div>
+          <input type="number" class="costo-input" id="real-${i}-materiales" value="${rMat}" placeholder="$0" min="0" step="100" oninput="previewReal()">
         </div>
-        <div style="text-align:right;">
-          <div style="font-size:9px; text-transform:uppercase; letter-spacing:0.6px; color:var(--muted); margin-bottom:2px;">Costo presup. total</div>
-          <div style="font-family:var(--font-mono); font-size:15px; color:var(--col-cost);">$${fmtN(pres.costoTotalItem)}</div>
+        <div>
+          <div style="font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:var(--muted); margin-bottom:4px;">Logística</div>
+          <input type="number" class="costo-input" id="real-${i}-logistica" value="${rLog}" placeholder="$0" min="0" step="100" oninput="previewReal()">
+        </div>
+        <div>
+          <div style="font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:var(--muted); margin-bottom:4px;">Mano de obra</div>
+          <input type="number" class="costo-input" id="real-${i}-moObs" value="${rMO}" placeholder="$0" min="0" step="100" oninput="previewReal()">
+        </div>
+        <div>
+          <div style="font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:var(--muted); margin-bottom:4px;">Otros</div>
+          <input type="number" class="costo-input" id="real-${i}-otros" value="${rOtros}" placeholder="$0" min="0" step="100" oninput="previewReal()">
         </div>
       </div>
-      <div class="costos-grid">
-        <div class="costo-field">
-          <label>Materiales / Producción $</label>
-          <input type="number" class="costo-input" id="real-${i}-materiales" value="${real.materiales||''}" placeholder="0" min="0" step="100" oninput="previewReal()">
-        </div>
+    </div>`;
+  }).join('');
+}
         <div class="costo-field">
           <label>Logística $</label>
           <input type="number" class="costo-input" id="real-${i}-logistica" value="${real.logistica||''}" placeholder="0" min="0" step="100" oninput="previewReal()">
         </div>
         <div class="costo-field">
           <label>Mano de obra $</label>
-          <input type="number" class="costo-input" id="real-${i}-moObs" value="${real.moObs||''}" placeholder="0" min="0" step="100" oninput="previewReal()">
-        </div>
-        <div class="costo-field">
-          <label>Otros / Imprevistos $</label>
-          <input type="number" class="costo-input" id="real-${i}-otros" value="${real.otros||''}" placeholder="0" min="0" step="100" oninput="previewReal()">
-        </div>
-      </div>
-    </div>`;
-  }).join('');
-}
-
 function calcItemPresup(item, g) {
   const qc     = item.qc || 1;
   const extra  = item.extra || 0;
@@ -824,7 +816,7 @@ function previewReal() {
   const cr = collectCostosReales(o);
   const tempOrden = { ...o, costosReales: cr };
   renderResultado(tempOrden);
-  renderComparativa(tempOrden);
+  renderItemsReales(tempOrden);
 }
 
 function collectCostosReales(o) {
