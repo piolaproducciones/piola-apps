@@ -285,7 +285,7 @@
 <!-- FIREBASE -->
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import { getFirestore, collection, doc, onSnapshot, updateDoc, deleteDoc, query, orderBy } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import { getFirestore, collection, doc, onSnapshot, updateDoc, query, orderBy } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
 const firebaseConfig = {
   apiKey: "AIzaSyAQNT8-8Q5v7Tfn9MIy530RSHdZj6Am390",
@@ -302,7 +302,6 @@ const db  = getFirestore(app);
 window._db          = db;
 window._fbDoc       = doc;
 window._fbUpdateDoc = updateDoc;
-window._fbDeleteDoc = deleteDoc;
 window._fbCollection= collection;
 
 const fbStatus = document.getElementById('fb-status');
@@ -447,30 +446,35 @@ function renderTabla(quotes) {
 
 function renderFila(q) {
   const est = q.estado || 'borrador';
+  const acciones = [];
+
+  if (est === 'borrador')   acciones.push(`<button class="btn-estado enviada"   onclick="event.stopPropagation(); cambiarEstado('${q.firebaseId}','enviada')">→ Enviar</button>`);
+  if (est === 'enviada')    acciones.push(`<button class="btn-estado aprobada"  onclick="event.stopPropagation(); cambiarEstado('${q.firebaseId}','aprobada')">✓ Aprobar</button>`);
+  if (est === 'enviada')    acciones.push(`<button class="btn-estado rechazada" onclick="event.stopPropagation(); cambiarEstado('${q.firebaseId}','rechazada')">✕ Rechazar</button>`);
+  if (est === 'rechazada')  acciones.push(`<button class="btn-estado enviada"   onclick="event.stopPropagation(); cambiarEstado('${q.firebaseId}','enviada')">↩ Reenviar</button>`);
+  if (est === 'aprobada')   acciones.push(`<button class="btn-estado rechazada" onclick="event.stopPropagation(); if(confirm('¿Revertir aprobación? Esto también afectará la orden de producción.')) cambiarEstado('${q.firebaseId}','enviada')" style="font-size:9px;">↩ Revertir</button>`);
+
   const estadoLabels = { borrador:'Borrador', enviada:'Enviada', aprobada:'Aprobada', rechazada:'Rechazada' };
-  const estados = ['borrador','enviada','aprobada','rechazada'];
-
-  const selector = `<select onchange="event.stopPropagation(); cambiarEstado('${q.firebaseId}', this.value)"
-    onclick="event.stopPropagation()"
-    style="background:var(--surface3); border:1px solid var(--border); border-radius:6px; color:var(--text);
-           padding:5px 8px; font-family:var(--font-body); font-size:11px; font-weight:600; outline:none; cursor:pointer;">
-    ${estados.map(e => `<option value="${e}" ${e===est?'selected':''}>${estadoLabels[e]}</option>`).join('')}
-  </select>`;
-
   return `<tr onclick="openDetalle('${q.firebaseId}')" style="cursor:pointer;">
     <td style="font-family:var(--font-mono); color:var(--accent); font-size:12px; white-space:nowrap;">${q.id}</td>
     <td style="font-weight:600;">${q.cliente}</td>
     <td style="color:var(--muted);">${q.proyecto}</td>
     <td style="font-family:var(--font-mono); font-size:11px; color:var(--muted); white-space:nowrap;">${q.fecha}</td>
     <td style="font-family:var(--font-mono); font-size:13px; font-weight:700; color:var(--col-sale); text-align:right; white-space:nowrap;">$${fmtN(q.totalVenta||0)}</td>
-    <td style="text-align:center;" onclick="event.stopPropagation()">${selector}</td>
+    <td style="text-align:center;" onclick="event.stopPropagation()">
+      <span class="estado-badge estado-${est}">${estadoLabels[est]||est}</span>
+    </td>
     <td style="color:var(--muted); font-size:12px;">${q.vendedor||'—'}</td>
     <td style="font-family:var(--font-mono); font-size:10px; color:var(--muted2); white-space:nowrap;">${q.savedAtDisplay||'—'}</td>
-    <td onclick="event.stopPropagation()">
-      <button class="del-btn" title="Ver detalle" onclick="event.stopPropagation(); openDetalle('${q.firebaseId}')">👁</button>
+    <td onclick="event.stopPropagation()" style="white-space:nowrap;">
+      <div style="display:flex; gap:4px; justify-content:flex-end; align-items:center;">
+        ${acciones.join('')}
+        <button class="del-btn" title="Ver detalle" onclick="openDetalle('${q.firebaseId}')">??</button>
+      </div>
     </td>
   </tr>`;
 }
+
 
 async function cambiarEstado(firebaseId, nuevoEstado) {
   try {
@@ -479,13 +483,6 @@ async function cambiarEstado(firebaseId, nuevoEstado) {
   } catch(e) { toast('Error: ' + e.message, ''); }
 }
 
-async function borrarCotizacion(firebaseId) {
-  if (!confirm('¿Borrar esta cotización? Esta acción no se puede deshacer.')) return;
-  try {
-    await window._fbDeleteDoc(window._fbDoc(window._db, 'cotizaciones', firebaseId));
-    toast('Cotización eliminada', 'success');
-  } catch(e) { toast('Error: ' + e.message, ''); }
-}
 
 // ============================================================
 // DETALLE MODAL
