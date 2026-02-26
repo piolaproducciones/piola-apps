@@ -321,7 +321,7 @@
 <!-- FIREBASE -->
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import { getFirestore, collection, doc, onSnapshot, addDoc, updateDoc, query, orderBy, where } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import { getFirestore, collection, doc, onSnapshot, addDoc, updateDoc } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
 const firebaseConfig = {
   apiKey: "AIzaSyAQNT8-8Q5v7Tfn9MIy530RSHdZj6Am390",
@@ -342,34 +342,10 @@ window._fbCollection= collection;
 
 const fbStatus = document.getElementById('fb-status');
 
-// Escuchar cotizaciones APROBADAS — crearles orden si no tienen
-onSnapshot(
-  query(collection(db, 'cotizaciones'), where('estado', '==', 'aprobada')),
-  async snap => {
-    for (const d of snap.docs) {
-      const cot = { firebaseId: d.id, ...d.data() };
-      if (!cot.ordenId) {
-        const ordenRef = await addDoc(collection(db, 'ordenes'), {
-          cotizacionId:  cot.firebaseId,
-          cotizacionNum: cot.id,
-          cliente:       cot.cliente,
-          proyecto:      cot.proyecto,
-          vendedor:      cot.vendedor || '—',
-          fecha:         cot.fecha,
-          items:         cot.items   || [],
-          globals:       cot.globals || {},
-          totalVenta:    cot.totalVenta || 0,
-          costosReales:  {},
-          estado:        'pendiente',
-          creadoEn:      new Date().toISOString(),
-        });
-        await updateDoc(doc(db, 'cotizaciones', cot.firebaseId), { ordenId: ordenRef.id });
-      }
-    }
-  }
-);
+// Primero cargar órdenes, luego arrancar listener de cotizaciones
+// (así window._ordenes ya está poblado cuando chequeamos si existe la orden)
+let cotListenerActivo = false;
 
-// Escuchar órdenes — sin orderBy para evitar índice compuesto, ordenamos en cliente
 onSnapshot(
   collection(db, 'ordenes'),
   snap => {
@@ -379,8 +355,42 @@ onSnapshot(
     fbStatus.style.color = 'var(--accent)';
     document.getElementById('loading-state').style.display = 'none';
     document.getElementById('table-wrapper').style.display = 'block';
-    // Disparar evento para que el script regular actualice la vista
     document.dispatchEvent(new CustomEvent('ordenes-updated'));
+
+    // Arrancar listener de cotizaciones una sola vez, cuando ya tenemos las órdenes
+    if (!cotListenerActivo) {
+      cotListenerActivo = true;
+      onSnapshot(
+        collection(db, 'cotizaciones'),
+        async snap => {
+          for (const d of snap.docs) {
+            const cot = d.data();
+            if (cot.estado !== 'aprobada') continue;         // solo aprobadas
+            const ordenExiste = cot.ordenId && !!window._ordenes[cot.ordenId];
+            if (!ordenExiste) {
+              try {
+                const ordenRef = await addDoc(collection(db, 'ordenes'), {
+                  cotizacionId:  d.id,
+                  cotizacionNum: cot.id,
+                  cliente:       cot.cliente,
+                  proyecto:      cot.proyecto,
+                  vendedor:      cot.vendedor || '—',
+                  fecha:         cot.fecha,
+                  items:         cot.items   || [],
+                  globals:       cot.globals || {},
+                  totalVenta:    cot.totalVenta || 0,
+                  costosReales:  {},
+                  estado:        'pendiente',
+                  creadoEn:      new Date().toISOString(),
+                });
+                await updateDoc(doc(db, 'cotizaciones', d.id), { ordenId: ordenRef.id });
+              } catch(e) { console.error('Error creando orden:', e); }
+            }
+          }
+        },
+        err => console.error('Error listener cotizaciones:', err)
+      );
+    }
   },
   err => {
     fbStatus.textContent = '🔴 error';
