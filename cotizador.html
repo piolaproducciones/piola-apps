@@ -552,8 +552,8 @@
     <div class="logo">Cotizador <span>·</span> Piola</div>
   </div>
   <div class="topbar-actions">
-    <div class="dolar-badge" onclick="fetchDolar()" title="Fuente: dolarito.ar — click para actualizar">
-      <a href="https://www.dolarito.ar" target="_blank" style="color:var(--muted); text-decoration:none; font-size:9px; letter-spacing:0.5px; margin-right:6px;" onclick="event.stopPropagation()">dolarito.ar</a>
+    <div class="dolar-badge" onclick="fetchDolar()" title="Click para actualizar">
+      <span style="color:var(--muted); font-size:11px; font-weight:600; margin-right:6px;">Dólar:</span>
       💵 CCL: <span class="val" id="dolar-ccl">—</span>
       &nbsp;|&nbsp; Oficial: <span class="val" id="dolar-of">—</span>
       <span style="font-size:9px; color:var(--muted2); margin-left:6px;" id="dolar-time">↻ actualizar</span>
@@ -581,12 +581,11 @@
 
   <!-- CABECERA -->
   <div class="panel mb-16">
-    <div class="panel-header">
-      <span class="panel-title">Cabecera del Proyecto</span>
+    <div class="panel-header" style="padding:12px 16px;">
       <span class="id-badge" id="display-id">COT-0001</span>
     </div>
     <div class="panel-body">
-      <div class="form-grid" style="grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));">
+      <div class="form-grid" style="grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap:14px 20px;">
         <div class="form-group">
           <label>Fecha</label>
           <input type="date" class="form-control" id="f-fecha">
@@ -612,8 +611,8 @@
           <input type="email" class="form-control" id="f-email" placeholder="email@empresa.com">
         </div>
         <div class="form-group">
-          <label>Vendedor</label>
-          <input type="text" class="form-control" id="f-vendedor" placeholder="Vendedor responsable">
+          <label>Vendedor <span style="color:var(--accent)">*</span></label>
+          <input type="text" class="form-control" id="f-vendedor" placeholder="Vendedor responsable" required>
         </div>
         <div class="form-group">
           <label>Entrega</label>
@@ -690,11 +689,7 @@
               <th title="Unidades extra internas (ocultas al cliente)">Extra ±</th>
               <th>Costo Unit.</th>
               <th>Cant. Log.</th>
-              <th class="calc" style="color:var(--col-cost)">Costo Total</th>
-              <th class="calc" style="color:var(--col-cost)">+ Log.</th>
-              <th class="calc" style="color:var(--col-cost)">+ Depo</th>
-              <th class="calc" style="color:var(--col-cost)">C.Unit.Final</th>
-              <th class="calc" style="color:var(--col-cost)">C.Tot.Final</th>
+              <th class="calc" style="color:var(--col-cost)" title="Costo total incluyendo logística y depósito">C.Total</th>
               <th class="calc" style="color:var(--col-sale)">Margen %</th>
               <th class="calc" style="color:var(--col-sale)">Venta Unit.</th>
               <th class="calc" style="color:var(--col-fin)">Financ.</th>
@@ -1131,11 +1126,7 @@ function renderTable() {
         </div>
       </td>
       <td style="width:70px;" title="Cantidad de envíos de logística"><input type="number" value="${item.cantLog}" min="0" step="1" onchange="updateItem(${item.id},'cantLog',parseFloat(this.value)||0)"></td>
-      <td class="calc-cell cost">$${fmtN(calc.costoTotal)}</td>
-      <td class="calc-cell cost">$${fmtN(calc.logistica)}</td>
-      <td class="calc-cell cost">$${fmtN(calc.depo)}</td>
-      <td class="calc-cell cost">$${fmtN(calc.costoUnitFinal)}</td>
-      <td class="calc-cell cost">$${fmtN(calc.costoTotalFinal)}</td>
+      <td class="calc-cell cost" title="Costo Total = (Costo + Logística + Depósito) × Cant.Log.">$${fmtN(calc.costoTotalFinal)}</td>
       <td style="width:70px;">
         <div style="position:relative;">
           <input type="number" value="${item.margen}" min="0" max="99" step="0.5" style="padding-right:18px; color:var(--col-sale); font-family:var(--font-mono);" onchange="updateItem(${item.id},'margen',parseFloat(this.value)||0)">
@@ -1493,6 +1484,16 @@ function buildPDF() {
 let currentFirebaseId = null; // ID del doc actualmente cargado
 
 async function saveQuote() {
+  // Validar vendedor obligatorio
+  const vendedorVal = document.getElementById('f-vendedor').value.trim();
+  if (!vendedorVal) {
+    toast('⚠ El campo Vendedor es obligatorio', '');
+    document.getElementById('f-vendedor').focus();
+    document.getElementById('f-vendedor').style.borderColor = 'var(--danger)';
+    setTimeout(() => document.getElementById('f-vendedor').style.borderColor = '', 2000);
+    return;
+  }
+
   const g = getGlobals();
   let totalVenta = 0;
   items.forEach(i => { totalVenta += calcItem(i, g).ventaFinal; });
