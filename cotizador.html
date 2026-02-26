@@ -167,6 +167,10 @@
     transition: border-color 0.2s;
     width: 100%;
   }
+  /* Ocultar steppers en todos los number inputs */
+  input[type=number]::-webkit-inner-spin-button,
+  input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+  input[type=number] { -moz-appearance: textfield; appearance: textfield; }
   .form-control:focus { border-color: var(--accent); }
   .form-control.readonly {
     background: var(--bg);
