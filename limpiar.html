@@ -12,14 +12,14 @@
   .sub { color:#6b6b80; font-size:13px; margin-bottom:28px; line-height:1.6; }
   .collections { display:flex; flex-direction:column; gap:8px; margin-bottom:28px; text-align:left; }
   .col-row { background:#1c1c22; border:1px solid #2a2a38; border-radius:8px; padding:12px 16px; display:flex; justify-content:space-between; align-items:center; font-size:13px; }
-  .col-name { font-family:'DM Mono',monospace; color:#c8ff57; }
+  .col-name { font-family:'DM Mono',monospace; color:#e8c800; }
   .col-count { font-family:'DM Mono',monospace; color:#6b6b80; font-size:12px; }
   .btn-danger { background:#ff5757; color:#fff; border:none; border-radius:8px; padding:14px 28px; font-family:'Syne',sans-serif; font-size:14px; font-weight:700; cursor:pointer; width:100%; transition:filter 0.2s; }
   .btn-danger:hover:not(:disabled) { filter:brightness(1.1); }
   .btn-danger:disabled { opacity:0.4; cursor:not-allowed; }
   .log { margin-top:20px; background:#0a0a0f; border:1px solid #2a2a38; border-radius:8px; padding:14px; text-align:left; max-height:200px; overflow-y:auto; font-family:'DM Mono',monospace; font-size:11px; display:none; }
   .log-line { padding:2px 0; }
-  .log-line.ok  { color:#c8ff57; }
+  .log-line.ok  { color:#e8c800; }
   .log-line.err { color:#ff5757; }
   .log-line.inf { color:#6b6b80; }
   .warning { background:rgba(255,87,87,0.08); border:1px solid rgba(255,87,87,0.3); border-radius:8px; padding:12px 16px; margin-bottom:24px; font-size:12px; color:#ff8fa3; line-height:1.6; }
@@ -123,7 +123,7 @@ window.confirmarLimpieza = async () => {
     log('✅ Limpieza completada. Podés cerrar esta página.', 'ok');
 
     btn.textContent = '✓ Listo — base limpia';
-    btn.style.background = '#c8ff57';
+    btn.style.background = '#e8c800';
     btn.style.color = '#0c0c0f';
 
     document.getElementById('count-cot').textContent = '0 documentos';

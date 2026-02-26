@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Cotizador Piola</title>
-<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,700;0,800;1,700;1,800&family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root {
     --bg: #0c0c0f;
@@ -12,7 +12,7 @@
     --surface2: #1c1c22;
     --surface3: #242430;
     --border: #2a2a38;
-    --accent: #c8ff57;
+    --accent: #e8c800;
     --accent2: #57c8ff;
     --danger: #ff5757;
     --warn: #ffb857;
@@ -21,10 +21,10 @@
     --muted2: #4a4a5a;
     --col-cost: #ff8fa3;
     --col-fin: #57c8ff;
-    --col-sale: #c8ff57;
+    --col-sale: #e8c800;
     --font-body: 'Syne', sans-serif;
     --font-mono: 'DM Mono', monospace;
-    --font-display: 'DM Serif Display', serif;
+    --font-display: 'Barlow Condensed', sans-serif;
   }
 
   :root[data-theme="light"] {
@@ -33,7 +33,7 @@
     --surface2: #f4f4f8;
     --surface3: #eaeaf0;
     --border: #dcdce8;
-    --accent: #4a8c00;
+    --accent: #b89a00;
     --accent2: #0077aa;
     --danger: #cc2200;
     --warn: #cc7700;
@@ -42,7 +42,7 @@
     --muted2: #a0a0b8;
     --col-cost: #cc3355;
     --col-fin: #0077aa;
-    --col-sale: #4a8c00;
+    --col-sale: #b89a00;
   }
 
   body {
@@ -178,16 +178,16 @@
     cursor: not-allowed;
   }
   .form-control.calculated {
-    background: rgba(200,255,87,0.05);
-    border-color: rgba(200,255,87,0.2);
+    background: rgba(232,200,0,0.05);
+    border-color: rgba(232,200,0,0.2);
     color: var(--accent);
     font-family: var(--font-mono);
   }
 
   /* ID BADGE */
   .id-badge {
-    background: linear-gradient(135deg, rgba(200,255,87,0.15), rgba(87,200,255,0.08));
-    border: 1px solid rgba(200,255,87,0.3);
+    background: linear-gradient(135deg, rgba(232,200,0,0.15), rgba(87,200,255,0.08));
+    border: 1px solid rgba(232,200,0,0.3);
     border-radius: 6px;
     padding: 8px 12px;
     font-family: var(--font-mono);
@@ -320,7 +320,7 @@
     transition: all 0.2s;
     margin-top: 8px;
   }
-  .add-row-btn:hover { border-color: var(--accent); color: var(--accent); background: rgba(200,255,87,0.03); }
+  .add-row-btn:hover { border-color: var(--accent); color: var(--accent); background: rgba(232,200,0,0.03); }
 
   /* SUMMARY CARDS */
   .summary-grid {
@@ -335,8 +335,8 @@
     padding: 16px;
   }
   .sum-card.highlight {
-    border-color: rgba(200,255,87,0.3);
-    background: rgba(200,255,87,0.05);
+    border-color: rgba(232,200,0,0.3);
+    background: rgba(232,200,0,0.05);
   }
   .sum-card.danger-card {
     border-color: rgba(255,87,87,0.3);
@@ -478,7 +478,7 @@
     letter-spacing: 0.5px;
     text-transform: uppercase;
   }
-  .badge-green { background: rgba(200,255,87,0.15); color: var(--accent); }
+  .badge-green { background: rgba(232,200,0,0.15); color: var(--accent); }
   .badge-red { background: rgba(255,87,87,0.15); color: var(--danger); }
   .badge-warn { background: rgba(255,184,87,0.15); color: var(--warn); }
 
@@ -498,7 +498,7 @@
     transition: all 0.3s;
   }
   .toast.show { transform: translateY(0); opacity: 1; }
-  .toast.success { border-color: rgba(200,255,87,0.4); }
+  .toast.success { border-color: rgba(232,200,0,0.4); }
 
   /* ALERT */
   .alert {
@@ -512,7 +512,7 @@
   }
   .alert-warn { background: rgba(255,184,87,0.1); border: 1px solid rgba(255,184,87,0.3); color: var(--warn); }
   .alert-danger { background: rgba(255,87,87,0.1); border: 1px solid rgba(255,87,87,0.3); color: var(--danger); }
-  .alert-ok { background: rgba(200,255,87,0.08); border: 1px solid rgba(200,255,87,0.25); color: var(--accent); }
+  .alert-ok { background: rgba(232,200,0,0.08); border: 1px solid rgba(232,200,0,0.25); color: var(--accent); }
 
   /* CFT TABLE */
   .cft-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
@@ -529,7 +529,7 @@
     transition: all 0.2s;
   }
   .cft-item:hover { border-color: var(--accent); }
-  .cft-item.selected { background: rgba(200,255,87,0.08); border-color: var(--accent); }
+  .cft-item.selected { background: rgba(232,200,0,0.08); border-color: var(--accent); }
   .cft-plazo { color: var(--muted); font-size: 11px; }
   .cft-rate { font-family: var(--font-mono); color: var(--accent); font-weight: 500; }
 
@@ -563,7 +563,7 @@
       <span style="font-size:9px; color:var(--muted2); margin-left:6px;" id="dolar-time">↻ actualizar</span>
     </div>
     <button id="theme-btn" onclick="toggleTheme()" class="btn btn-secondary">☀️ Claro</button>
-    <button class="btn btn-secondary" onclick="nuevaCotizacion()" style="border-color:rgba(200,255,87,0.2); color:var(--muted);">+ Nueva</button>
+    <button class="btn btn-secondary" onclick="nuevaCotizacion()" style="border-color:rgba(232,200,0,0.2); color:var(--muted);">+ Nueva</button>
     <button class="btn btn-secondary" onclick="saveQuote()">💾 Guardar</button>
     <button class="btn btn-primary" onclick="showView('pdf')">📄 Generar PDF</button>
   </div>
@@ -708,7 +708,7 @@
         </table>
       </div>
       <div style="padding: 12px 16px;">
-        <button onclick="addRow()" style="background:rgba(200,255,87,0.12); border:1px solid rgba(200,255,87,0.3); color:var(--accent); border-radius:8px; padding:10px 20px; font-family:var(--font-body); font-size:13px; font-weight:700; cursor:pointer; transition:all 0.2s; display:inline-flex; align-items:center; gap:8px;" onmouseover="this.style.background='rgba(200,255,87,0.22)'" onmouseout="this.style.background='rgba(200,255,87,0.12)'">＋ Agregar ítem</button>
+        <button onclick="addRow()" style="background:rgba(232,200,0,0.12); border:1px solid rgba(232,200,0,0.3); color:var(--accent); border-radius:8px; padding:10px 20px; font-family:var(--font-body); font-size:13px; font-weight:700; cursor:pointer; transition:all 0.2s; display:inline-flex; align-items:center; gap:8px;" onmouseover="this.style.background='rgba(232,200,0,0.22)'" onmouseout="this.style.background='rgba(232,200,0,0.12)'">＋ Agregar ítem</button>
       </div>
     </div>
   </div>
@@ -1341,7 +1341,7 @@ function updateDashboard() {
     { label: 'Logística', val: logTotal, color: '#ffb857' },
     { label: 'Depósito', val: depoTotal, color: '#ffd557' },
     { label: 'Margen Utilidad', val: margenVal, color: '#57c8ff' },
-    { label: 'Financiación (CFT)', val: financTotal, color: '#c8ff57' },
+    { label: 'Financiación (CFT)', val: financTotal, color: '#e8c800' },
     { label: 'Com. Agencia', val: comTotal, color: '#b8a8ff' },
   ];
   const max = totalVenta || 1;
