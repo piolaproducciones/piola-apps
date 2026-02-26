@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Cotizaciones Piola</title>
-<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,700;0,800;1,700;1,800&family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root {
     --bg: #0c0c0f;
@@ -12,7 +12,7 @@
     --surface2: #1c1c22;
     --surface3: #242430;
     --border: #2a2a38;
-    --accent: #c8ff57;
+    --accent: #e8c800;
     --danger: #ff5757;
     --warn: #ffb857;
     --text: #e8e8f0;
@@ -20,17 +20,17 @@
     --muted2: #4a4a5a;
     --col-cost: #ff8fa3;
     --col-fin: #57c8ff;
-    --col-sale: #c8ff57;
+    --col-sale: #e8c800;
     --font-body: 'Syne', sans-serif;
     --font-mono: 'DM Mono', monospace;
-    --font-display: 'DM Serif Display', serif;
+    --font-display: 'Barlow Condensed', sans-serif;
     --radius: 10px;
   }
   :root[data-theme="light"] {
     --bg: #f0f0f5; --surface: #ffffff; --surface2: #f4f4f8; --surface3: #eaeaf0;
-    --border: #dcdce8; --accent: #4a8c00; --danger: #cc2200; --warn: #cc7700;
+    --border: #dcdce8; --accent: #b89a00; --danger: #cc2200; --warn: #cc7700;
     --text: #1a1a2e; --muted: #70708a; --muted2: #a0a0b8;
-    --col-cost: #cc3355; --col-fin: #0077aa; --col-sale: #4a8c00;
+    --col-cost: #cc3355; --col-fin: #0077aa; --col-sale: #b89a00;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { background: var(--bg); color: var(--text); font-family: var(--font-body); font-size: 13px; min-height: 100vh; }
@@ -74,21 +74,21 @@
   table { width: 100%; border-collapse: collapse; }
   thead th { padding: 10px 12px; text-align: left; font-size: 9px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--border); white-space: nowrap; }
   tbody tr { border-bottom: 1px solid rgba(42,42,56,0.5); transition: background 0.15s; cursor: pointer; }
-  tbody tr:hover { background: rgba(200,255,87,0.03); }
+  tbody tr:hover { background: rgba(232,200,0,0.03); }
   td { padding: 11px 12px; vertical-align: middle; }
 
   /* BADGES ESTADO */
   .estado-badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 10px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; font-family: var(--font-mono); white-space: nowrap; }
   .estado-borrador  { background: rgba(107,107,128,0.2); color: var(--muted);   border: 1px solid rgba(107,107,128,0.3); }
   .estado-enviada   { background: rgba(87,200,255,0.15); color: var(--col-fin); border: 1px solid rgba(87,200,255,0.3); }
-  .estado-aprobada  { background: rgba(200,255,87,0.15); color: var(--accent);  border: 1px solid rgba(200,255,87,0.3); }
+  .estado-aprobada  { background: rgba(232,200,0,0.15); color: var(--accent);  border: 1px solid rgba(232,200,0,0.3); }
   .estado-rechazada { background: rgba(255,87,87,0.15);  color: var(--danger);  border: 1px solid rgba(255,87,87,0.3); }
 
   /* ESTADO SELECT inline */
   .estado-select { border: none; border-radius: 20px; padding: 3px 10px; font-size: 10px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; font-family: var(--font-mono); cursor: pointer; outline: none; appearance: none; -webkit-appearance: none; text-align: center; }
   .estado-select.estado-borrador  { background: rgba(107,107,128,0.2); color: var(--muted);   border: 1px solid rgba(107,107,128,0.3); }
   .estado-select.estado-enviada   { background: rgba(87,200,255,0.15); color: var(--col-fin); border: 1px solid rgba(87,200,255,0.3); }
-  .estado-select.estado-aprobada  { background: rgba(200,255,87,0.15); color: var(--accent);  border: 1px solid rgba(200,255,87,0.3); }
+  .estado-select.estado-aprobada  { background: rgba(232,200,0,0.15); color: var(--accent);  border: 1px solid rgba(232,200,0,0.3); }
   .estado-select.estado-rechazada { background: rgba(255,87,87,0.15);  color: var(--danger);  border: 1px solid rgba(255,87,87,0.3); }
 
   /* MODAL DETALLE */
@@ -109,14 +109,14 @@
 
   .toast { position: fixed; bottom: 24px; right: 24px; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 20px; font-size: 13px; z-index: 999; transform: translateY(80px); opacity: 0; transition: all 0.3s; }
   .toast.show { transform: translateY(0); opacity: 1; }
-  .toast.success { border-color: rgba(200,255,87,0.4); }
+  .toast.success { border-color: rgba(232,200,0,0.4); }
 
   /* BOTONES DE ESTADO */
   .btn-estado { border: none; border-radius: 20px; padding: 3px 10px; font-size: 10px; font-weight: 700; letter-spacing: 0.5px; font-family: var(--font-mono); cursor: pointer; transition: all 0.15s; white-space: nowrap; }
   .btn-estado.enviada   { background: rgba(87,200,255,0.15); color: var(--col-fin); border: 1px solid rgba(87,200,255,0.3); }
   .btn-estado.enviada:hover { background: rgba(87,200,255,0.3); }
-  .btn-estado.aprobada  { background: rgba(200,255,87,0.15); color: var(--accent);  border: 1px solid rgba(200,255,87,0.3); }
-  .btn-estado.aprobada:hover { background: rgba(200,255,87,0.3); }
+  .btn-estado.aprobada  { background: rgba(232,200,0,0.15); color: var(--accent);  border: 1px solid rgba(232,200,0,0.3); }
+  .btn-estado.aprobada:hover { background: rgba(232,200,0,0.3); }
   .btn-estado.rechazada { background: rgba(255,87,87,0.15);  color: var(--danger);  border: 1px solid rgba(255,87,87,0.3); }
   .btn-estado.rechazada:hover { background: rgba(255,87,87,0.3); }
   .spinner { width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; flex-shrink: 0; }

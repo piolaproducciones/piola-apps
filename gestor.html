@@ -4,34 +4,34 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Producción Master</title>
-<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,700;0,800;1,700;1,800&family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #0a0f0a;
-    --surface: #111611;
-    --surface2: #181e18;
-    --surface3: #1f271f;
-    --border: #2a382a;
-    --accent: #57ff8f;
-    --accent2: #c8ff57;
+    --bg: #0c0c0f;
+    --surface: #141418;
+    --surface2: #1c1c22;
+    --surface3: #222228;
+    --border: #2a2a38;
+    --accent: #e8c800;
+    --accent2: #e8c800;
     --danger: #ff5757;
     --warn: #ffb857;
-    --text: #e8f0e8;
-    --muted: #6b806b;
-    --muted2: #4a5a4a;
+    --text: #e8e8f0;
+    --muted: #6b6b80;
+    --muted2: #4a4a5a;
     --radius: 10px;
     --font-body: 'Syne', sans-serif;
     --font-mono: 'DM Mono', monospace;
-    --font-display: 'DM Serif Display', serif;
+    --font-display: 'Barlow Condensed', sans-serif;
     --col-cost: #ff8fa3;
-    --col-sale: #57ff8f;
+    --col-sale: #e8c800;
     --col-fin: #57c8ff;
   }
   :root[data-theme="light"] {
     --bg: #f0f0f5; --surface: #ffffff; --surface2: #f4f4f8; --surface3: #eaeaf0;
-    --border: #dcdce8; --accent: #4a8c00; --danger: #cc2200; --warn: #cc7700;
+    --border: #dcdce8; --accent: #b89a00; --danger: #cc2200; --warn: #cc7700;
     --text: #1a1a2e; --muted: #70708a; --muted2: #a0a0b8;
-    --col-cost: #cc3355; --col-fin: #0077aa; --col-sale: #4a8c00;
+    --col-cost: #cc3355; --col-fin: #0077aa; --col-sale: #b89a00;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { background: var(--bg); color: var(--text); font-family: var(--font-body); font-size: 13px; min-height: 100vh; }
@@ -812,8 +812,8 @@ async function importCsv() {
 
   const res = document.getElementById('csv-result');
   res.style.display = 'block';
-  res.style.background = errores === 0 ? 'rgba(200,255,87,0.08)' : 'rgba(255,87,87,0.08)';
-  res.style.border = errores === 0 ? '1px solid rgba(200,255,87,0.3)' : '1px solid rgba(255,87,87,0.3)';
+  res.style.background = errores === 0 ? 'rgba(232,200,0,0.08)' : 'rgba(255,87,87,0.08)';
+  res.style.border = errores === 0 ? '1px solid rgba(232,200,0,0.3)' : '1px solid rgba(255,87,87,0.3)';
   res.style.color = errores === 0 ? 'var(--accent)' : 'var(--danger)';
   res.innerHTML = `✓ Importación completada — <strong>${creados} creados</strong>, <strong>${actualizados} actualizados</strong>${errores > 0 ? `, <strong>${errores} errores</strong>` : ''}`;
 
