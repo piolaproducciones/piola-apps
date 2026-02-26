@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" data-theme="dark">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -25,6 +25,12 @@
     --font-mono: 'DM Mono', monospace;
     --font-display: 'DM Serif Display', serif;
     --radius: 10px;
+  }
+  :root[data-theme="light"] {
+    --bg: #f0f0f5; --surface: #ffffff; --surface2: #f4f4f8; --surface3: #eaeaf0;
+    --border: #dcdce8; --accent: #4a8c00; --danger: #cc2200; --warn: #cc7700;
+    --text: #1a1a2e; --muted: #70708a; --muted2: #a0a0b8;
+    --col-cost: #cc3355; --col-fin: #0077aa; --col-sale: #4a8c00;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { background: var(--bg); color: var(--text); font-family: var(--font-body); font-size: 13px; min-height: 100vh; }
@@ -156,7 +162,11 @@
     Aprobados <span>·</span> Piola
     <span class="role">Aprobados</span>
   </div>
-  <span id="fb-status" style="font-size:11px; font-family:var(--font-mono); color:var(--muted);">⏳ conectando...</span>
+  <div style="display:flex; align-items:center; gap:10px;">
+    <a href="index.html" style="background:var(--surface2); border:1px solid var(--border); color:var(--muted); border-radius:8px; padding:6px 12px; font-size:12px; font-weight:600; text-decoration:none; font-family:var(--font-body);">← Inicio</a>
+    <button id="theme-btn" onclick="toggleTheme()" style="background:var(--surface2); border:1px solid var(--border); color:var(--muted); border-radius:8px; padding:6px 12px; font-family:var(--font-body); font-size:12px; font-weight:600; cursor:pointer;">☀️ Claro</button>
+    <span id="fb-status" style="font-size:11px; font-family:var(--font-mono); color:var(--muted);">⏳ conectando...</span>
+  </div>
 </div>
 
 <div class="main">
@@ -867,6 +877,24 @@ function toast(msg, type) {
   t.className = 'toast show ' + (type || '');
   setTimeout(() => t.classList.remove('show'), 2800);
 }
+
+function toggleTheme() {
+  const html = document.documentElement;
+  const isDark = html.getAttribute('data-theme') === 'dark';
+  html.setAttribute('data-theme', isDark ? 'light' : 'dark');
+  const btn = document.getElementById('theme-btn');
+  if (btn) btn.textContent = isDark ? '🌙 Oscuro' : '☀️ Claro';
+  localStorage.setItem('piola-theme', isDark ? 'light' : 'dark');
+}
+const savedTheme = localStorage.getItem('piola-theme');
+if (savedTheme) {
+  document.documentElement.setAttribute('data-theme', savedTheme);
+  document.addEventListener('DOMContentLoaded', () => {
+    const btn = document.getElementById('theme-btn');
+    if (btn) btn.textContent = savedTheme === 'light' ? '🌙 Oscuro' : '☀️ Claro';
+  });
+}
+
 </script>
 </body>
 </html>

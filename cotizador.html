@@ -1,0 +1,1689 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cotizador Piola</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0c0c0f;
+    --surface: #141418;
+    --surface2: #1c1c22;
+    --surface3: #242430;
+    --border: #2a2a38;
+    --accent: #c8ff57;
+    --accent2: #57c8ff;
+    --danger: #ff5757;
+    --warn: #ffb857;
+    --text: #e8e8f0;
+    --muted: #6b6b80;
+    --muted2: #4a4a5a;
+    --col-cost: #ff8fa3;
+    --col-fin: #57c8ff;
+    --col-sale: #c8ff57;
+    --font-body: 'Syne', sans-serif;
+    --font-mono: 'DM Mono', monospace;
+    --font-display: 'DM Serif Display', serif;
+  }
+
+  :root[data-theme="light"] {
+    --bg: #f0f0f5;
+    --surface: #ffffff;
+    --surface2: #f4f4f8;
+    --surface3: #eaeaf0;
+    --border: #dcdce8;
+    --accent: #4a8c00;
+    --accent2: #0077aa;
+    --danger: #cc2200;
+    --warn: #cc7700;
+    --text: #1a1a2e;
+    --muted: #70708a;
+    --muted2: #a0a0b8;
+    --col-cost: #cc3355;
+    --col-fin: #0077aa;
+    --col-sale: #4a8c00;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: 13px;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* TOPBAR */
+  .topbar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 28px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .logo {
+    font-family: var(--font-display);
+    font-size: 22px;
+    color: var(--text);
+    letter-spacing: -0.5px;
+  }
+  .logo span { color: var(--accent); }
+  .topbar-actions { display: flex; gap: 10px; align-items: center; }
+  .dolar-badge {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 5px 12px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .dolar-badge:hover { border-color: var(--accent); color: var(--accent); }
+  .dolar-badge .val { color: var(--accent); font-weight: 500; margin-left: 4px; }
+
+  /* TABS */
+  .tabs {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 28px;
+    display: flex;
+    gap: 2px;
+  }
+  .tab {
+    padding: 12px 20px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: var(--muted);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+  }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  /* MAIN LAYOUT */
+  .main { padding: 24px 28px; max-width: 1600px; margin: 0 auto; }
+
+  /* PANEL */
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    margin-bottom: 16px;
+  }
+  .panel-header {
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--surface2);
+  }
+  .panel-title {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .panel-body { padding: 20px; }
+
+  /* FORM GRID */
+  .form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 14px;
+  }
+  .form-grid.cols-2 { grid-template-columns: 1fr 1fr; }
+  .form-grid.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+  .form-group { display: flex; flex-direction: column; gap: 6px; }
+  .form-group label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .form-control {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    padding: 8px 12px;
+    font-family: var(--font-body);
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.2s;
+    width: 100%;
+  }
+  .form-control:focus { border-color: var(--accent); }
+  .form-control.readonly {
+    background: var(--bg);
+    color: var(--muted);
+    cursor: not-allowed;
+  }
+  .form-control.calculated {
+    background: rgba(200,255,87,0.05);
+    border-color: rgba(200,255,87,0.2);
+    color: var(--accent);
+    font-family: var(--font-mono);
+  }
+
+  /* ID BADGE */
+  .id-badge {
+    background: linear-gradient(135deg, rgba(200,255,87,0.15), rgba(87,200,255,0.08));
+    border: 1px solid rgba(200,255,87,0.3);
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-family: var(--font-mono);
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--accent);
+    letter-spacing: 2px;
+  }
+
+  /* GLOBAL VARS STRIP */
+  .global-vars {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 20px;
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+  }
+  .gvar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+  }
+  .gvar-label {
+    color: var(--muted);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+  }
+  .gvar input {
+    background: var(--surface3);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    color: var(--text);
+    padding: 5px 10px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    outline: none;
+    width: 120px;
+    transition: border-color 0.2s;
+  }
+  .gvar input:focus { border-color: var(--accent); }
+  .sep { width: 1px; height: 28px; background: var(--border); }
+
+  /* ITEMS TABLE */
+  .table-wrapper { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  thead tr { background: var(--surface3); }
+  thead th {
+    padding: 10px 10px;
+    text-align: left;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: var(--muted);
+    white-space: nowrap;
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+  }
+  thead th.calc { color: var(--accent); opacity: 0.7; }
+  tbody tr { border-bottom: 1px solid rgba(42,42,56,0.5); transition: background 0.15s; }
+  tbody tr:hover { background: rgba(255,255,255,0.02); }
+  td {
+    padding: 6px 6px;
+    vertical-align: middle;
+  }
+  td input, td select {
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    color: var(--text);
+    padding: 4px 6px;
+    font-family: var(--font-body);
+    font-size: 12px;
+    outline: none;
+    width: 100%;
+    transition: all 0.15s;
+  }
+  td input:focus, td select:focus {
+    background: var(--surface3);
+    border-color: var(--accent);
+  }
+  .badge-borrador  { background: rgba(107,107,128,0.2); color: var(--muted); border: 1px solid rgba(107,107,128,0.3); }
+  .badge-enviada   { background: rgba(87,200,255,0.15); color: var(--col-fin); border: 1px solid rgba(87,200,255,0.3); }
+  .badge-aprobada  { background: rgba(87,255,143,0.15); color: #57ff8f; border: 1px solid rgba(87,255,143,0.3); }
+  .badge-rechazada { background: rgba(255,87,87,0.15);  color: var(--danger); border: 1px solid rgba(255,87,87,0.3); }
+  td.calc-cell.warn { color: var(--warn); }
+  td.calc-cell.danger { color: var(--danger); }
+  td.calc-cell.cost  { color: var(--col-cost); }
+  td.calc-cell.fin   { color: var(--col-fin); }
+  td.calc-cell.sale  { color: var(--col-sale); font-weight: 700; }
+  td select option { background: var(--surface2); }
+  .row-num {
+    width: 28px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--muted2);
+    text-align: center;
+  }
+  .del-btn {
+    background: none;
+    border: none;
+    color: var(--muted2);
+    cursor: pointer;
+    padding: 4px 6px;
+    border-radius: 4px;
+    font-size: 14px;
+    transition: all 0.2s;
+  }
+  .del-btn:hover { color: var(--danger); background: rgba(255,87,87,0.1); }
+
+  /* ADD ROW */
+  .add-row-btn {
+    background: none;
+    border: 1px dashed var(--border);
+    border-radius: var(--radius);
+    color: var(--muted);
+    padding: 10px;
+    width: 100%;
+    cursor: pointer;
+    font-family: var(--font-body);
+    font-size: 12px;
+    transition: all 0.2s;
+    margin-top: 8px;
+  }
+  .add-row-btn:hover { border-color: var(--accent); color: var(--accent); background: rgba(200,255,87,0.03); }
+
+  /* SUMMARY CARDS */
+  .summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 12px;
+  }
+  .sum-card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+  }
+  .sum-card.highlight {
+    border-color: rgba(200,255,87,0.3);
+    background: rgba(200,255,87,0.05);
+  }
+  .sum-card.danger-card {
+    border-color: rgba(255,87,87,0.3);
+    background: rgba(255,87,87,0.05);
+  }
+  .sum-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+  .sum-value {
+    font-family: var(--font-mono);
+    font-size: 18px;
+    font-weight: 500;
+    color: var(--text);
+  }
+  .sum-card.highlight .sum-value { color: var(--accent); }
+  .sum-card.danger-card .sum-value { color: var(--danger); }
+  .sum-sub {
+    font-size: 10px;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+
+  /* RENTABILIDAD */
+  .rent-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  .deduction-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+  }
+  .deduction-row:last-child { border-bottom: none; }
+  .deduction-label { color: var(--muted); }
+  .deduction-val { font-family: var(--font-mono); color: var(--text); }
+  .deduction-val.red { color: var(--danger); }
+  .deduction-val.green { color: var(--accent); }
+  .ganancia-bar {
+    height: 8px;
+    background: var(--surface3);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-top: 12px;
+  }
+  .ganancia-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.5s ease;
+    background: var(--accent);
+  }
+  .ganancia-fill.warn { background: var(--warn); }
+  .ganancia-fill.bad { background: var(--danger); }
+
+  /* BUTTONS */
+  .btn {
+    padding: 9px 18px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    font-family: var(--font-body);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .btn-primary {
+    background: var(--accent);
+    color: var(--bg);
+  }
+  .btn-primary:hover { background: #d4ff7a; transform: translateY(-1px); }
+  .btn-secondary {
+    background: var(--surface2);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+  .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-danger {
+    background: rgba(255,87,87,0.15);
+    color: var(--danger);
+    border: 1px solid rgba(255,87,87,0.3);
+  }
+
+  /* PDF VIEW */
+  .pdf-preview {
+    background: #fff;
+    color: #111;
+    border-radius: var(--radius);
+    padding: 40px;
+    font-family: 'Helvetica Neue', sans-serif;
+    max-width: 800px;
+    margin: 0 auto;
+  }
+  .pdf-preview h1 { font-size: 24px; color: #111; margin-bottom: 4px; }
+  .pdf-preview .pdf-meta { font-size: 12px; color: #666; margin-bottom: 30px; }
+  .pdf-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+  .pdf-table th {
+    background: #111;
+    color: #fff;
+    padding: 10px 12px;
+    text-align: left;
+    font-size: 11px;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+  }
+  .pdf-table td { padding: 10px 12px; border-bottom: 1px solid #eee; font-size: 13px; }
+  .pdf-table tr:last-child td { border-bottom: none; }
+  .pdf-total-row td { font-weight: bold; background: #f5f5f5; }
+  .pdf-conditions {
+    background: #f9f9f9;
+    border-left: 3px solid #111;
+    padding: 12px 16px;
+    font-size: 12px;
+    color: #555;
+  }
+
+  /* SECTION */
+  .view { display: none; }
+  .view.active { display: block; }
+
+  /* BADGE */
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+  .badge-green { background: rgba(200,255,87,0.15); color: var(--accent); }
+  .badge-red { background: rgba(255,87,87,0.15); color: var(--danger); }
+  .badge-warn { background: rgba(255,184,87,0.15); color: var(--warn); }
+
+  /* TOAST */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 20px;
+    font-size: 13px;
+    z-index: 999;
+    transform: translateY(80px);
+    opacity: 0;
+    transition: all 0.3s;
+  }
+  .toast.show { transform: translateY(0); opacity: 1; }
+  .toast.success { border-color: rgba(200,255,87,0.4); }
+
+  /* ALERT */
+  .alert {
+    border-radius: var(--radius);
+    padding: 12px 16px;
+    font-size: 12px;
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    margin-bottom: 12px;
+  }
+  .alert-warn { background: rgba(255,184,87,0.1); border: 1px solid rgba(255,184,87,0.3); color: var(--warn); }
+  .alert-danger { background: rgba(255,87,87,0.1); border: 1px solid rgba(255,87,87,0.3); color: var(--danger); }
+  .alert-ok { background: rgba(200,255,87,0.08); border: 1px solid rgba(200,255,87,0.25); color: var(--accent); }
+
+  /* CFT TABLE */
+  .cft-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .cft-item {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .cft-item:hover { border-color: var(--accent); }
+  .cft-item.selected { background: rgba(200,255,87,0.08); border-color: var(--accent); }
+  .cft-plazo { color: var(--muted); font-size: 11px; }
+  .cft-rate { font-family: var(--font-mono); color: var(--accent); font-weight: 500; }
+
+  .flex-between { display: flex; justify-content: space-between; align-items: center; }
+  .gap-8 { gap: 8px; }
+  .flex { display: flex; }
+  .mt-12 { margin-top: 12px; }
+  .mb-16 { margin-bottom: 16px; }
+  hr.sep-line { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
+
+  @media print {
+    body { background: #fff; }
+    .topbar, .tabs, .global-vars, .panel:not(.pdf-panel) { display: none; }
+    .pdf-preview { box-shadow: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div style="display:flex; align-items:center; gap:12px;">
+    <a href="index.html" style="background:var(--surface2); border:1px solid var(--border); color:var(--muted); border-radius:8px; padding:6px 12px; font-size:12px; font-weight:600; text-decoration:none;">← Inicio</a>
+    <div class="logo">Cotizador <span>·</span> Piola</div>
+  </div>
+  <div class="topbar-actions">
+    <div class="dolar-badge" onclick="fetchDolar()" title="Fuente: dolarito.ar — click para actualizar">
+      <a href="https://www.dolarito.ar" target="_blank" style="color:var(--muted); text-decoration:none; font-size:9px; letter-spacing:0.5px; margin-right:6px;" onclick="event.stopPropagation()">dolarito.ar</a>
+      💵 CCL: <span class="val" id="dolar-ccl">—</span>
+      &nbsp;|&nbsp; Oficial: <span class="val" id="dolar-of">—</span>
+      <span style="font-size:9px; color:var(--muted2); margin-left:6px;" id="dolar-time">↻ actualizar</span>
+    </div>
+    <button id="theme-btn" onclick="toggleTheme()" class="btn btn-secondary">☀️ Claro</button>
+    <button class="btn btn-secondary" onclick="nuevaCotizacion()" style="border-color:rgba(200,255,87,0.2); color:var(--muted);">+ Nueva</button>
+    <button class="btn btn-secondary" onclick="saveQuote()">💾 Guardar</button>
+    <button class="btn btn-primary" onclick="showView('pdf')">📄 Generar PDF</button>
+  </div>
+</div>
+
+<!-- TABS -->
+<div class="tabs">
+  <div class="tab active" onclick="showView('editor', this)">✏️ Editor</div>
+  <div class="tab" onclick="showView('dashboard', this)">📊 Dashboard</div>
+  <div class="tab" onclick="showView('rentabilidad', this)">💰 Rentabilidad</div>
+  <div class="tab" onclick="showView('cft', this)">📈 CFT</div>
+  <div class="tab" onclick="showView('pdf', this)">🖨 Vista Cliente</div>
+</div>
+
+<div class="main">
+
+<!-- ===================== EDITOR VIEW ===================== -->
+<div class="view active" id="view-editor">
+
+  <!-- CABECERA -->
+  <div class="panel mb-16">
+    <div class="panel-header">
+      <span class="panel-title">Cabecera del Proyecto</span>
+      <span class="id-badge" id="display-id">COT-0001</span>
+    </div>
+    <div class="panel-body">
+      <div class="form-grid" style="grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));">
+        <div class="form-group">
+          <label>Fecha</label>
+          <input type="date" class="form-control" id="f-fecha">
+        </div>
+        <div class="form-group">
+          <label>Cliente</label>
+          <input type="text" class="form-control" id="f-cliente" placeholder="Nombre del cliente">
+        </div>
+        <div class="form-group">
+          <label>Proyecto</label>
+          <input type="text" class="form-control" id="f-proyecto" placeholder="Nombre del proyecto">
+        </div>
+        <div class="form-group">
+          <label>Marca</label>
+          <input type="text" class="form-control" id="f-marca" placeholder="Marca">
+        </div>
+        <div class="form-group">
+          <label>Contacto</label>
+          <input type="text" class="form-control" id="f-contacto" placeholder="Nombre y apellido">
+        </div>
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" class="form-control" id="f-email" placeholder="email@empresa.com">
+        </div>
+        <div class="form-group">
+          <label>Vendedor</label>
+          <input type="text" class="form-control" id="f-vendedor" placeholder="Vendedor responsable">
+        </div>
+        <div class="form-group">
+          <label>Entrega</label>
+          <input type="date" class="form-control" id="f-entrega">
+        </div>
+        <div class="form-group">
+          <label>Condición Comercial</label>
+          <select class="form-control" id="f-condicion" onchange="recalcAll()">
+            <option value="0">Contado (0%)</option>
+            <option value="2.88">30 días (2.88%)</option>
+            <option value="5.83">60 días (5.83%)</option>
+            <option value="8.84">90 días (8.84%)</option>
+            <option value="12.18">120 días (12.18%)</option>
+            <option value="15.61">150 días (15.61%)</option>
+            <option value="19.15">180 días (19.15%)</option>
+            <option value="26.56">270 días (26.56%)</option>
+            <option value="35.00">365 días (35.00%)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- VARIABLES GLOBALES -->
+  <div class="global-vars mb-16">
+    <span style="font-size:10px; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:var(--muted)">Variables Globales</span>
+    <div class="sep"></div>
+    <div class="gvar">
+      <span class="gvar-label">Dólar CCL</span>
+      <input type="number" id="g-dolar-ccl" value="1265" onchange="recalcAll()">
+    </div>
+    <div class="gvar">
+      <span class="gvar-label">Dólar Oficial</span>
+      <input type="number" id="g-dolar-of" value="1050" onchange="recalcAll()">
+    </div>
+    <div class="sep"></div>
+    <div class="gvar">
+      <span class="gvar-label">Logística Base $</span>
+      <input type="number" id="g-logistica" value="20000" onchange="recalcAll()">
+    </div>
+    <div class="gvar">
+      <span class="gvar-label">Depósito %</span>
+      <input type="number" id="g-depo" value="2" step="0.1" onchange="recalcAll()">
+    </div>
+    <div class="sep"></div>
+    <div class="gvar">
+      <span class="gvar-label">Comisión Agencia %</span>
+      <input type="number" id="g-comision" value="0" min="0" step="0.5" onchange="recalcAll()">
+    </div>
+    <div class="sep"></div>
+    <div class="gvar">
+      <span class="gvar-label">IVA %</span>
+      <input type="number" id="g-iva" value="21" step="0.5" onchange="recalcAll()">
+    </div>
+  </div>
+
+  <!-- TABLA ÍTEMS -->
+  <div class="panel">
+    <div class="panel-header">
+      <span class="panel-title">Tabla de Ítems</span>
+      <div style="display:flex; gap:8px;">
+        <span id="items-count" style="font-size:11px; color:var(--muted); font-family:var(--font-mono)">0 ítems</span>
+      </div>
+    </div>
+    <div class="panel-body" style="padding: 0;">
+      <div class="table-wrapper">
+        <table id="items-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Proveedor</th>
+              <th>Descripción</th>
+              <th>Cant. Cliente</th>
+              <th title="Unidades extra internas (ocultas al cliente)">Extra ±</th>
+              <th>Costo Unit.</th>
+              <th>Cant. Log.</th>
+              <th class="calc" style="color:var(--col-cost)">Costo Total</th>
+              <th class="calc" style="color:var(--col-cost)">+ Log.</th>
+              <th class="calc" style="color:var(--col-cost)">+ Depo</th>
+              <th class="calc" style="color:var(--col-cost)">C.Unit.Final</th>
+              <th class="calc" style="color:var(--col-cost)">C.Tot.Final</th>
+              <th class="calc" style="color:var(--col-sale)">Margen %</th>
+              <th class="calc" style="color:var(--col-sale)">Venta Unit.</th>
+              <th class="calc" style="color:var(--col-fin)">Financ.</th>
+              <th class="calc" style="color:var(--col-fin)">Com.Ag.</th>
+              <th class="calc" style="color:var(--col-sale)">Venta Final</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="items-tbody">
+          </tbody>
+        </table>
+      </div>
+      <div style="padding: 12px 16px;">
+        <button onclick="addRow()" style="background:rgba(200,255,87,0.12); border:1px solid rgba(200,255,87,0.3); color:var(--accent); border-radius:8px; padding:10px 20px; font-family:var(--font-body); font-size:13px; font-weight:700; cursor:pointer; transition:all 0.2s; display:inline-flex; align-items:center; gap:8px;" onmouseover="this.style.background='rgba(200,255,87,0.22)'" onmouseout="this.style.background='rgba(200,255,87,0.12)'">＋ Agregar ítem</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOTALES -->
+  <div class="summary-grid mt-12" id="summary-cards">
+    <div class="sum-card">
+      <div class="sum-label">Costo Total Proveedor</div>
+      <div class="sum-value" id="s-costo-total">$0</div>
+      <div class="sum-sub">Sin márgenes</div>
+    </div>
+    <div class="sum-card">
+      <div class="sum-label">Venta Total (sin IVA)</div>
+      <div class="sum-value" id="s-venta-total">$0</div>
+    </div>
+    <div class="sum-card highlight">
+      <div class="sum-label">Venta Total + IVA</div>
+      <div class="sum-value" id="s-venta-iva">$0</div>
+    </div>
+    <div class="sum-card">
+      <div class="sum-label">Margen Bruto $</div>
+      <div class="sum-value" id="s-margen-bruto">$0</div>
+    </div>
+    <div class="sum-card">
+      <div class="sum-label">Margen Bruto %</div>
+      <div class="sum-value" id="s-margen-pct">0%</div>
+    </div>
+    <div class="sum-card" id="s-card-costo-pct">
+      <div class="sum-label">Costo / Venta</div>
+      <div class="sum-value" id="s-costo-pct">0%</div>
+      <div class="sum-sub">⚠ Alerta si &gt; 50%</div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== DASHBOARD VIEW ===================== -->
+<div class="view" id="view-dashboard">
+  <div class="panel">
+    <div class="panel-header"><span class="panel-title">Dashboard — Campaña</span></div>
+    <div class="panel-body">
+      <div class="summary-grid" id="dash-cards" style="margin-bottom:20px;"></div>
+      <hr class="sep-line">
+      <div id="dash-alert"></div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-top:16px;">
+        <div>
+          <div class="panel-title" style="margin-bottom:14px;">Composición del Precio Final</div>
+          <div id="price-breakdown"></div>
+        </div>
+        <div>
+          <div class="panel-title" style="margin-bottom:14px;">Ítems por Costo</div>
+          <div id="items-bars"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== RENTABILIDAD VIEW ===================== -->
+<div class="view" id="view-rentabilidad">
+  <div class="panel">
+    <div class="panel-header"><span class="panel-title">Calculador de Rentabilidad</span></div>
+    <div class="panel-body">
+      <div class="rent-grid">
+        <div>
+          <div id="rent-alerts"></div>
+          <div class="deduction-row">
+            <span class="deduction-label">Venta Total (sin IVA)</span>
+            <span class="deduction-val" id="r-venta">$0</span>
+          </div>
+          <div class="deduction-row">
+            <span class="deduction-label">Costo Proveedor</span>
+            <span class="deduction-val red" id="r-costo">$0</span>
+          </div>
+          <div class="deduction-row">
+            <span class="deduction-label">Margen Bruto</span>
+            <span class="deduction-val green" id="r-margen-bruto">$0</span>
+          </div>
+          <hr class="sep-line">
+          <div class="deduction-row">
+            <span class="deduction-label">— Costo Equipo (23%)</span>
+            <span class="deduction-val red" id="r-equipo">$0</span>
+          </div>
+          <div class="deduction-row">
+            <span class="deduction-label">— Estructura (7%)</span>
+            <span class="deduction-val red" id="r-estructura">$0</span>
+          </div>
+          <div class="deduction-row">
+            <span class="deduction-label">— IIBB (4%)</span>
+            <span class="deduction-val red" id="r-iibb">$0</span>
+          </div>
+          <div class="deduction-row">
+            <span class="deduction-label">— IIGG (30%)</span>
+            <span class="deduction-val red" id="r-iigg">$0</span>
+          </div>
+          <hr class="sep-line">
+          <div class="deduction-row" style="font-size:15px;">
+            <span style="color:var(--text); font-weight:700;">Ganancia Neta</span>
+            <span class="deduction-val green" id="r-neta" style="font-size:15px;">$0</span>
+          </div>
+          <div class="deduction-row">
+            <span class="deduction-label">Ganancia Neta %</span>
+            <span class="deduction-val" id="r-neta-pct">0%</span>
+          </div>
+          <div class="ganancia-bar"><div class="ganancia-fill" id="r-bar" style="width:0%"></div></div>
+          <div style="font-size:10px; color:var(--muted); margin-top:4px;">Mínimo requerido: 10%</div>
+        </div>
+        <div>
+          <div class="panel-title" style="margin-bottom:14px;">Configuración de Deducciones</div>
+          <div class="form-grid cols-2">
+            <div class="form-group">
+              <label>Costo Equipo %</label>
+              <input type="number" class="form-control" id="d-equipo" value="23" onchange="updateRentabilidad()">
+            </div>
+            <div class="form-group">
+              <label>Estructura %</label>
+              <input type="number" class="form-control" id="d-estructura" value="7" onchange="updateRentabilidad()">
+            </div>
+            <div class="form-group">
+              <label>IIBB %</label>
+              <input type="number" class="form-control" id="d-iibb" value="4" onchange="updateRentabilidad()">
+            </div>
+            <div class="form-group">
+              <label>IIGG %</label>
+              <input type="number" class="form-control" id="d-iigg" value="30" onchange="updateRentabilidad()">
+            </div>
+            <div class="form-group">
+              <label>Ganancia Mínima (BP) %</label>
+              <input type="number" class="form-control" id="d-minima" value="10" onchange="updateRentabilidad()">
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== CFT VIEW ===================== -->
+<div class="view" id="view-cft">
+  <div class="panel">
+    <div class="panel-header">
+      <span class="panel-title">Tabla CFT — Costo Financiero Total</span>
+      <span style="font-size:11px; color:var(--muted)">Seleccionada en Condición Comercial</span>
+    </div>
+    <div class="panel-body">
+      <div class="cft-grid" id="cft-grid"></div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ===================== PDF VIEW ===================== -->
+<div class="view" id="view-pdf">
+  <div style="display:flex; gap:10px; justify-content:flex-end; margin-bottom:16px;">
+    <button class="btn btn-secondary" onclick="showView('editor', document.querySelector('.tab'))">← Volver</button>
+    <button class="btn btn-primary" onclick="window.print()">🖨 Imprimir / Guardar PDF</button>
+  </div>
+  <div class="pdf-preview" id="pdf-content"></div>
+</div>
+
+</div><!-- end main -->
+
+<!-- DATALIST para autocomplete de productos -->
+<datalist id="productos-datalist"></datalist>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script type="module">
+// ============================================================
+// FIREBASE CONFIG
+// ============================================================
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import { getFirestore, collection, doc, getDocs, addDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAQNT8-8Q5v7Tfn9MIy530RSHdZj6Am390",
+  authDomain: "piola-cotizador.firebaseapp.com",
+  projectId: "piola-cotizador",
+  storageBucket: "piola-cotizador.firebasestorage.app",
+  messagingSenderId: "881054830595",
+  appId: "1:881054830595:web:3d138a4952bba717d63e36"
+};
+
+const app = initializeApp(firebaseConfig);
+const db  = getFirestore(app);
+
+window._db          = db;
+window._fbCollection= collection;
+window._fbDoc       = doc;
+window._fbGetDocs   = getDocs;
+window._fbAddDoc    = addDoc;
+window._fbUpdateDoc = updateDoc;
+window._fbDeleteDoc = deleteDoc;
+window._fbOnSnapshot= onSnapshot;
+window._fbQuery     = query;
+window._fbOrderBy   = orderBy;
+
+// Iniciar listener de cotizaciones en tiempo real
+window.addEventListener('load', () => {
+  window._fbOnSnapshot(
+    window._fbQuery(window._fbCollection(window._db, 'cotizaciones'), window._fbOrderBy('savedAt', 'desc')),
+    snap => {
+      window._quotesDB = {};
+      snap.forEach(d => window._quotesDB[d.id] = { firebaseId: d.id, ...d.data() });
+      if (typeof renderHistorial === 'function') renderHistorial();
+    },
+    err => console.error('Error cotizaciones:', err)
+  );
+});
+</script>
+
+<script>
+// ============================================================
+// DATA
+// ============================================================
+const CFT_TABLE = [
+  { plazo: 'Contado', dias: 0, rate: 0 },
+  { plazo: '30 días', dias: 30, rate: 2.88 },
+  { plazo: '60 días', dias: 60, rate: 5.83 },
+  { plazo: '90 días', dias: 90, rate: 8.84 },
+  { plazo: '120 días', dias: 120, rate: 12.18 },
+  { plazo: '150 días', dias: 150, rate: 15.61 },
+  { plazo: '180 días', dias: 180, rate: 19.15 },
+  { plazo: '270 días', dias: 270, rate: 26.56 },
+  { plazo: '365 días', dias: 365, rate: 35.00 },
+];
+
+let items = [];
+let nextId = 1;
+let quoteCounter = parseInt(localStorage.getItem('piola-counter') || '1');
+let productosDB = [];
+let materialesDB = [];
+
+// ============================================================
+// INIT
+// ============================================================
+window.onload = async () => {
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('f-fecha').value = today;
+  document.getElementById('display-id').textContent = 'COT-' + String(quoteCounter).padStart(4,'0');
+  buildCFTGrid();
+  buildDatalist();
+  addRow();
+  fetchDolar();
+  await loadProductosFromFirebase();
+};
+
+// ============================================================
+// NAVIGATION
+// ============================================================
+function showView(name, tabEl) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById('view-' + name).classList.add('active');
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  if (tabEl) tabEl.classList.add('active');
+  if (name === 'dashboard') updateDashboard();
+  if (name === 'rentabilidad') updateRentabilidad();
+  if (name === 'pdf') buildPDF();
+}
+
+// ============================================================
+// DÓLAR
+// ============================================================
+async function fetchDolar() {
+  const timeEl = document.getElementById('dolar-time');
+  timeEl.textContent = '↻ cargando...';
+
+  // Cada estrategia intenta una fuente diferente con su propio parser
+  const strategies = [
+
+    // 1. dolarapi.com — directo (funciona si hay CORS habilitado)
+    async () => {
+      const r = await fetch('https://dolarapi.com/v1/dolares');
+      const d = await r.json();
+      return {
+        ccl:     d.find(x => x.casa === 'contadoconliqui')?.venta,
+        oficial: d.find(x => x.casa === 'oficial')?.venta,
+      };
+    },
+
+    // 2. dolarapi.com via corsproxy.io
+    async () => {
+      const url = 'https://dolarapi.com/v1/dolares';
+      const r = await fetch('https://corsproxy.io/?' + encodeURIComponent(url));
+      const d = await r.json();
+      return {
+        ccl:     d.find(x => x.casa === 'contadoconliqui')?.venta,
+        oficial: d.find(x => x.casa === 'oficial')?.venta,
+      };
+    },
+
+    // 3. ambito.com API pública
+    async () => {
+      const [rCCL, rOf] = await Promise.all([
+        fetch('https://mercados.ambito.com//dolar/contado-con-liquidacion/variacion'),
+        fetch('https://mercados.ambito.com//dolar/oficial/variacion'),
+      ]);
+      const [dCCL, dOf] = await Promise.all([rCCL.json(), rOf.json()]);
+      const parsePeso = v => parseFloat(String(v).replace(/\./g,'').replace(',','.'));
+      return {
+        ccl:     parsePeso(dCCL?.venta),
+        oficial: parsePeso(dOf?.venta),
+      };
+    },
+
+    // 4. bluelytics.com.ar — pública sin auth
+    async () => {
+      const r = await fetch('https://api.bluelytics.com.ar/v2/latest');
+      const d = await r.json();
+      return {
+        ccl:     d?.blue?.value_sell,   // blue como proxy de CCL cuando no hay ccl
+        oficial: d?.official?.value_sell,
+      };
+    },
+
+    // 5. allorigins proxy sobre dolarapi
+    async () => {
+      const url = 'https://dolarapi.com/v1/dolares';
+      const r = await fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent(url));
+      const d = await r.json();
+      return {
+        ccl:     d.find(x => x.casa === 'contadoconliqui')?.venta,
+        oficial: d.find(x => x.casa === 'oficial')?.venta,
+      };
+    },
+  ];
+
+  let success = false;
+  for (let i = 0; i < strategies.length; i++) {
+    try {
+      const result = await Promise.race([
+        strategies[i](),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000))
+      ]);
+      const ccl = result?.ccl;
+      const oficial = result?.oficial;
+      if (ccl && ccl > 0) {
+        document.getElementById('dolar-ccl').textContent = '$' + fmtN(ccl);
+        document.getElementById('g-dolar-ccl').value = ccl;
+      }
+      if (oficial && oficial > 0) {
+        document.getElementById('dolar-of').textContent = '$' + fmtN(oficial);
+        document.getElementById('g-dolar-of').value = oficial;
+      }
+      if ((ccl && ccl > 0) || (oficial && oficial > 0)) {
+        timeEl.textContent = '✓ ' + new Date().toLocaleTimeString('es-AR', {hour:'2-digit',minute:'2-digit'});
+        recalcAll();
+        toast('Cotización actualizada', 'success');
+        success = true;
+        break;
+      }
+    } catch(e) {
+      // siguiente estrategia
+    }
+  }
+
+  if (!success) {
+    timeEl.textContent = '⚠ manual';
+    toast('No se pudo obtener cotización automática. Ingresá los valores manualmente.', '');
+  }
+}
+
+// ============================================================
+// CFT GRID
+// ============================================================
+function buildCFTGrid() {
+  const sel = parseFloat(document.getElementById('f-condicion').value);
+  const grid = document.getElementById('cft-grid');
+  grid.innerHTML = CFT_TABLE.map(c => `
+    <div class="cft-item ${c.rate === sel ? 'selected' : ''}" onclick="selectCFT(${c.rate})">
+      <span class="cft-plazo">${c.plazo}</span>
+      <span class="cft-rate">${c.rate === 0 ? '0%' : '+' + c.rate + '%'}</span>
+    </div>
+  `).join('');
+}
+
+function selectCFT(rate) {
+  document.getElementById('f-condicion').value = rate;
+  recalcAll();
+  buildCFTGrid();
+}
+
+// ============================================================
+// ITEMS TABLE
+// ============================================================
+function addRow() {
+  const id = nextId++;
+  items.push({ id, proveedor:'', desc:'', qc:1, extra:0, costoUnit:0, cantLog:0, margen:50 });
+  renderTable();
+}
+
+function delRow(id) {
+  items = items.filter(i => i.id !== id);
+  renderTable();
+  recalcAll();
+}
+
+function renderTable() {
+  const tbody = document.getElementById('items-tbody');
+  const globals = getGlobals();
+  tbody.innerHTML = items.map((item, idx) => {
+    const calc = calcItem(item, globals);
+    const costoPct = globals.ventaTotal > 0 ? (calc.costoTotalFinal / globals.ventaTotal * 100) : 0;
+    return `
+    <tr>
+      <td class="row-num">${idx+1}</td>
+      <td><input type="text" value="${item.proveedor}" placeholder="Proveedor" onchange="updateItem(${item.id},'proveedor',this.value)"></td>
+      <td style="min-width:220px;">
+        <input type="text" value="${item.desc}" placeholder="Buscar o escribir producto..." list="productos-datalist"
+          oninput="updateItemSilent(${item.id},'desc',this.value)"
+          onchange="updateItem(${item.id},'desc',this.value); autocompletarProducto(${item.id}, this.value)"
+          onblur="autocompletarProducto(${item.id}, this.value)">
+      </td>
+      <td style="width:70px;"><input type="number" value="${item.qc}" min="1" onchange="updateItem(${item.id},'qc',parseFloat(this.value)||1)"></td>
+      <td style="width:60px;" title="Unidades extra internas, no visibles al cliente"><input type="number" value="${item.extra}" min="0" step="1" style="color:var(--warn);" onchange="updateItem(${item.id},'extra',parseFloat(this.value)||0)"></td>
+      <td style="min-width:130px;">
+        <div style="position:relative;">
+          <span style="position:absolute; left:7px; top:50%; transform:translateY(-50%); color:var(--muted); font-family:var(--font-mono); font-size:11px; pointer-events:none;">$</span>
+          <input type="number" value="${item.costoUnit}" min="0" step="100" style="padding-left:18px;" onchange="updateItem(${item.id},'costoUnit',parseFloat(this.value)||0)">
+        </div>
+      </td>
+      <td style="width:70px;" title="Cantidad de envíos de logística"><input type="number" value="${item.cantLog}" min="0" step="1" onchange="updateItem(${item.id},'cantLog',parseFloat(this.value)||0)"></td>
+      <td class="calc-cell cost">$${fmtN(calc.costoTotal)}</td>
+      <td class="calc-cell cost">$${fmtN(calc.logistica)}</td>
+      <td class="calc-cell cost">$${fmtN(calc.depo)}</td>
+      <td class="calc-cell cost">$${fmtN(calc.costoUnitFinal)}</td>
+      <td class="calc-cell cost">$${fmtN(calc.costoTotalFinal)}</td>
+      <td style="width:70px;">
+        <div style="position:relative;">
+          <input type="number" value="${item.margen}" min="0" max="99" step="0.5" style="padding-right:18px; color:var(--col-sale); font-family:var(--font-mono);" onchange="updateItem(${item.id},'margen',parseFloat(this.value)||0)">
+          <span style="position:absolute; right:7px; top:50%; transform:translateY(-50%); color:var(--col-sale); font-family:var(--font-mono); font-size:11px; pointer-events:none;">%</span>
+        </div>
+      </td>
+      <td class="calc-cell sale">$${fmtN(calc.ventaUnit)}</td>
+      <td class="calc-cell fin">$${fmtN(calc.financ)}</td>
+      <td class="calc-cell fin">$${fmtN(calc.comAg)}</td>
+      <td class="calc-cell sale" style="font-size:13px;">$${fmtN(calc.ventaFinal)}</td>
+      <td><button onclick="delRow(${item.id})" style="background:rgba(255,87,87,0.12); border:1px solid rgba(255,87,87,0.25); color:#ff5757; border-radius:6px; width:32px; height:32px; cursor:pointer; font-size:16px; display:flex; align-items:center; justify-content:center; transition:all 0.15s;" onmouseover="this.style.background='rgba(255,87,87,0.25)'" onmouseout="this.style.background='rgba(255,87,87,0.12)'">×</button></td>
+    </tr>`;
+  }).join('');
+  document.getElementById('items-count').textContent = items.length + ' ítem' + (items.length !== 1 ? 's' : '');
+}
+
+function updateItem(id, field, val) {
+  const item = items.find(i => i.id === id);
+  if (item) { item[field] = val; recalcAll(); }
+}
+
+// Actualiza el dato sin rerenderizar (para no perder el foco mientras se escribe)
+function updateItemSilent(id, field, val) {
+  const item = items.find(i => i.id === id);
+  if (item) item[field] = val;
+}
+
+// ============================================================
+// GLOBALS + CALC
+// ============================================================
+function getGlobals() {
+  return {
+    dolarCCL: parseFloat(document.getElementById('g-dolar-ccl').value) || 1265,
+    dolarOf: parseFloat(document.getElementById('g-dolar-of').value) || 1050,
+    logisticaBase: parseFloat(document.getElementById('g-logistica').value) || 20000,
+    depoP: (parseFloat(document.getElementById('g-depo').value) || 0) / 100,
+    comisionP: (parseFloat(document.getElementById('g-comision').value) || 0) / 100,
+    cft: (parseFloat(document.getElementById('f-condicion').value) || 0) / 100,
+    iva: (parseFloat(document.getElementById('g-iva').value) || 0) / 100,
+    ventaTotal: 0
+  };
+}
+
+function calcItem(item, globals) {
+  const extra = item.extra || 0;
+  const qTotal = item.qc + extra; // cantidad real a producir (incluye extra)
+
+  // Costo base cubre TODA la producción (cliente + extra)
+  const costoTotal = qTotal * item.costoUnit;
+
+  // Logística = cantidad de envíos × precio base de logística
+  const cantLog = item.cantLog || 0;
+  const logistica = cantLog * globals.logisticaBase;
+
+  // Depósito = % sobre el costo total
+  const depo = costoTotal * globals.depoP;
+
+  // Costo total incluyendo logística y depósito
+  const costoTotalFinal = costoTotal + logistica + depo;
+
+  // Costo unitario distribuido SOLO sobre la cantidad del cliente
+  // (el extra queda absorbido en el precio de venta)
+  const costoUnitFinal = item.qc > 0 ? costoTotalFinal / item.qc : 0;
+
+  // Precio de venta unitario aplicando mark-up sobre costo unitario final
+  const margenP = (item.margen || 0) / 100;
+  const ventaUnit = margenP < 1 ? costoUnitFinal / (1 - margenP) : costoUnitFinal;
+
+  // Financiación (CFT) sobre precio de venta unitario
+  const financ = ventaUnit * globals.cft;
+
+  // Comisión agencia sobre (ventaUnit + financ)
+  const comAg = (ventaUnit + financ) * globals.comisionP;
+
+  // Venta Final = precio completo × cantidad CLIENTE (sin extra)
+  const ventaFinal = (ventaUnit + financ + comAg) * item.qc;
+
+  return { costoTotal, logistica, depo, costoUnitFinal, costoTotalFinal, ventaUnit, financ, comAg, ventaFinal, qTotal };
+}
+
+// ============================================================
+// FIREBASE — cargar productos para autocomplete
+// ============================================================
+async function loadProductosFromFirebase() {
+  try {
+    const snap = await window._fbGetDocs(window._fbCollection(window._db, 'productos'));
+    productosDB = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    buildDatalist();
+    console.log(`✓ ${productosDB.length} productos cargados desde Firebase`);
+  } catch(e) {
+    console.warn('Firebase no disponible, autocomplete desactivado.', e);
+  }
+}
+
+// ============================================================
+// DATALIST (autocomplete en editor)
+
+// ============================================================
+function buildDatalist() {
+  const dl = document.getElementById('productos-datalist');
+  if (!dl) return;
+  dl.innerHTML = productosDB.map(p => `<option value="${p.nombre}">`).join('');
+}
+
+function autocompletarProducto(itemId, nombre) {
+  const match = productosDB.find(p => p.nombre.toLowerCase() === nombre.toLowerCase());
+  if (!match) return;
+  const item = items.find(i => i.id === itemId);
+  if (!item) return;
+  if (match.costoTotal > 0) item.costoUnit = match.costoTotal;
+  if (match.proveedor)      item.proveedor = match.proveedor;
+  recalcAll();
+}
+
+// ============================================================
+// RECALC
+// ============================================================
+function recalcAll() {
+  buildCFTGrid();
+  const globals = getGlobals();
+  let totalCosto = 0, totalVenta = 0;
+  items.forEach(item => {
+    const c = calcItem(item, globals);
+    totalCosto += c.costoTotalFinal;
+    totalVenta += c.ventaFinal;
+  });
+  globals.ventaTotal = totalVenta;
+
+  const ventaIVA = totalVenta * (1 + globals.iva);
+  const margenBruto = totalVenta - totalCosto;
+  const margenPct = totalVenta > 0 ? (margenBruto / totalVenta * 100) : 0;
+  const costoPct = totalVenta > 0 ? (totalCosto / totalVenta * 100) : 0;
+
+  document.getElementById('s-costo-total').textContent = '$' + fmtN(totalCosto);
+  document.getElementById('s-venta-total').textContent = '$' + fmtN(totalVenta);
+  document.getElementById('s-venta-iva').textContent = '$' + fmtN(ventaIVA);
+  document.getElementById('s-margen-bruto').textContent = '$' + fmtN(margenBruto);
+  document.getElementById('s-margen-pct').textContent = margenPct.toFixed(1) + '%';
+  document.getElementById('s-costo-pct').textContent = costoPct.toFixed(1) + '%';
+
+  const cCard = document.getElementById('s-card-costo-pct');
+  if (costoPct > 50) {
+    cCard.className = 'sum-card danger-card';
+  } else {
+    cCard.className = 'sum-card';
+  }
+  renderTable();
+  updateDashboard();
+  updateRentabilidad();
+}
+
+// ============================================================
+// DASHBOARD
+// ============================================================
+function updateDashboard() {
+  const globals = getGlobals();
+  let totalCosto = 0, totalVenta = 0;
+  items.forEach(item => {
+    const c = calcItem(item, globals);
+    totalCosto += c.costoTotalFinal;
+    totalVenta += c.ventaFinal;
+  });
+  const ventaIVA = totalVenta * (1 + globals.iva);
+  const margenPct = totalVenta > 0 ? (totalCosto / totalVenta * 100) : 0;
+  const cft = parseFloat(document.getElementById('f-condicion').value);
+  const comPct = globals.comisionP * 100;
+
+  document.getElementById('dash-cards').innerHTML = `
+    <div class="sum-card"><div class="sum-label">Campaña Costo</div><div class="sum-value">$${fmtN(totalCosto)}</div></div>
+    <div class="sum-card highlight"><div class="sum-label">Campaña Total (sin IVA)</div><div class="sum-value">$${fmtN(totalVenta)}</div></div>
+    <div class="sum-card highlight"><div class="sum-label">Campaña Total + IVA</div><div class="sum-value">$${fmtN(ventaIVA)}</div></div>
+    <div class="sum-card ${margenPct > 50 ? 'danger-card' : ''}">
+      <div class="sum-label">Costo / Venta</div>
+      <div class="sum-value">${margenPct.toFixed(1)}%</div>
+      <div class="sum-sub">${margenPct > 50 ? '⚠ Supera el límite 50%' : '✓ Dentro del rango'}</div>
+    </div>
+    <div class="sum-card"><div class="sum-label">CFT aplicado</div><div class="sum-value">${cft}%</div></div>
+    <div class="sum-card"><div class="sum-label">Comisión Agencia</div><div class="sum-value">${comPct}%</div></div>
+  `;
+
+  const alert = document.getElementById('dash-alert');
+  if (margenPct > 50) {
+    alert.innerHTML = `<div class="alert alert-danger">⚠ <strong>Alerta:</strong> El costo del proveedor supera el 50% de la venta total. Revisar márgenes o precios.</div>`;
+  } else {
+    alert.innerHTML = `<div class="alert alert-ok">✓ Relación Costo/Venta dentro del parámetro aceptable (&lt; 50%).</div>`;
+  }
+
+  // Price breakdown
+  const logTotal = items.reduce((a, item) => a + calcItem(item, globals).logistica, 0);
+  const depoTotal = items.reduce((a, item) => a + calcItem(item, globals).depo, 0);
+  const financTotal = items.reduce((a, item) => a + calcItem(item, globals).financ * item.qc, 0);
+  const comTotal = items.reduce((a, item) => a + calcItem(item, globals).comAg * item.qc, 0);
+  const margenVal = totalVenta - totalCosto;
+  const bars = [
+    { label: 'Costo Proveedor', val: totalCosto, color: '#ff5757' },
+    { label: 'Logística', val: logTotal, color: '#ffb857' },
+    { label: 'Depósito', val: depoTotal, color: '#ffd557' },
+    { label: 'Margen Utilidad', val: margenVal, color: '#57c8ff' },
+    { label: 'Financiación (CFT)', val: financTotal, color: '#c8ff57' },
+    { label: 'Com. Agencia', val: comTotal, color: '#b8a8ff' },
+  ];
+  const max = totalVenta || 1;
+  document.getElementById('price-breakdown').innerHTML = bars.map(b => `
+    <div style="margin-bottom:10px;">
+      <div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom:4px;">
+        <span style="color:var(--muted)">${b.label}</span>
+        <span style="font-family:var(--font-mono); color:${b.color}">$${fmtN(b.val)}</span>
+      </div>
+      <div style="height:6px; background:var(--surface3); border-radius:3px; overflow:hidden;">
+        <div style="height:100%; width:${Math.max(0, b.val/max*100).toFixed(1)}%; background:${b.color}; border-radius:3px; transition:width 0.5s;"></div>
+      </div>
+    </div>
+  `).join('');
+
+  // Items bars
+  const maxItem = Math.max(...items.map(i => calcItem(i, globals).ventaFinal), 1);
+  document.getElementById('items-bars').innerHTML = items.length === 0
+    ? '<div style="color:var(--muted); font-size:12px;">Sin ítems cargados.</div>'
+    : items.map(i => {
+        const c = calcItem(i, globals);
+        return `
+        <div style="margin-bottom:10px;">
+          <div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom:4px;">
+            <span style="color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:180px;">${i.desc || 'Sin descripción'}</span>
+            <span style="font-family:var(--font-mono); color:var(--accent)">$${fmtN(c.ventaFinal)}</span>
+          </div>
+          <div style="height:6px; background:var(--surface3); border-radius:3px; overflow:hidden;">
+            <div style="height:100%; width:${(c.ventaFinal/maxItem*100).toFixed(1)}%; background:var(--accent); border-radius:3px; transition:width 0.5s;"></div>
+          </div>
+        </div>`;
+      }).join('');
+}
+
+// ============================================================
+// RENTABILIDAD
+// ============================================================
+function updateRentabilidad() {
+  const globals = getGlobals();
+  let totalCosto = 0, totalVenta = 0;
+  items.forEach(item => {
+    const c = calcItem(item, globals);
+    totalCosto += c.costoTotalFinal;
+    totalVenta += c.ventaFinal;
+  });
+
+  const margenBruto = totalVenta - totalCosto;
+  const pEquipo = parseFloat(document.getElementById('d-equipo').value) / 100;
+  const pEstructura = parseFloat(document.getElementById('d-estructura').value) / 100;
+  const pIIBB = parseFloat(document.getElementById('d-iibb').value) / 100;
+  const pIIGG = parseFloat(document.getElementById('d-iigg').value) / 100;
+  const minima = parseFloat(document.getElementById('d-minima').value);
+
+  const equipo = margenBruto * pEquipo;
+  const estructura = margenBruto * pEstructura;
+  const iibb = margenBruto * pIIBB;
+  const base = margenBruto - equipo - estructura - iibb;
+  const iigg = base * pIIGG;
+  const neta = base - iigg;
+  const netaPct = totalVenta > 0 ? (neta / totalVenta * 100) : 0;
+
+  document.getElementById('r-venta').textContent = '$' + fmtN(totalVenta);
+  document.getElementById('r-costo').textContent = '$' + fmtN(totalCosto);
+  document.getElementById('r-margen-bruto').textContent = '$' + fmtN(margenBruto);
+  document.getElementById('r-equipo').textContent = '-$' + fmtN(equipo);
+  document.getElementById('r-estructura').textContent = '-$' + fmtN(estructura);
+  document.getElementById('r-iibb').textContent = '-$' + fmtN(iibb);
+  document.getElementById('r-iigg').textContent = '-$' + fmtN(iigg);
+  document.getElementById('r-neta').textContent = '$' + fmtN(neta);
+  document.getElementById('r-neta-pct').textContent = netaPct.toFixed(2) + '%';
+
+  const bar = document.getElementById('r-bar');
+  bar.style.width = Math.min(100, Math.max(0, netaPct)).toFixed(1) + '%';
+  bar.className = 'ganancia-fill' + (netaPct < minima ? ' bad' : netaPct < minima * 1.5 ? ' warn' : '');
+
+  const alerts = document.getElementById('rent-alerts');
+  let alertHTML = '';
+  if (neta < 0) alertHTML += `<div class="alert alert-danger">🚨 Ganancia neta negativa. Revisar costos y márgenes urgente.</div>`;
+  else if (netaPct < minima) alertHTML += `<div class="alert alert-warn">⚠ Ganancia neta (${netaPct.toFixed(1)}%) por debajo del mínimo requerido (${minima}%).</div>`;
+  else alertHTML += `<div class="alert alert-ok">✓ Rentabilidad dentro de parámetros. Ganancia neta: ${netaPct.toFixed(1)}%</div>`;
+  const costoPct = totalVenta > 0 ? (totalCosto / totalVenta * 100) : 0;
+  if (costoPct > 50) alertHTML += `<div class="alert alert-danger">⚠ Costo proveedor supera el 50% de la venta (${costoPct.toFixed(1)}%).</div>`;
+  alerts.innerHTML = alertHTML;
+}
+
+// ============================================================
+// PDF
+// ============================================================
+function buildPDF() {
+  const globals = getGlobals();
+  const cliente = document.getElementById('f-cliente').value || '—';
+  const proyecto = document.getElementById('f-proyecto').value || '—';
+  const fecha = document.getElementById('f-fecha').value || '—';
+  const condicion = document.getElementById('f-condicion').options[document.getElementById('f-condicion').selectedIndex].text;
+  const vendedor = document.getElementById('f-vendedor').value || '—';
+  const entrega = document.getElementById('f-entrega').value || '—';
+
+  let totalSinIVA = 0;
+  const rows = items.map((item, idx) => {
+    const c = calcItem(item, globals);
+    totalSinIVA += c.ventaFinal;
+    const unitSinIVA = item.qc > 0 ? c.ventaFinal / item.qc : 0;
+    return `<tr>
+      <td>${idx+1}</td>
+      <td><strong>${item.desc || '—'}</strong>${item.proveedor ? '<br><span style="font-size:11px;color:#888">'+item.proveedor+'</span>' : ''}</td>
+      <td style="text-align:center;">${item.qc}</td>
+      <td style="text-align:right; font-family:monospace;">$${fmtN(unitSinIVA)}</td>
+      <td style="text-align:right; font-family:monospace; font-weight:bold;">$${fmtN(c.ventaFinal)}</td>
+    </tr>`;
+  }).join('');
+
+  const iva = totalSinIVA * globals.iva;
+  const total = totalSinIVA + iva;
+
+  document.getElementById('pdf-content').innerHTML = `
+    <h1>Propuesta Económica</h1>
+    <div class="pdf-meta">
+      <strong>${proyecto}</strong> — ${cliente} &nbsp;|&nbsp; Fecha: ${fecha} &nbsp;|&nbsp; Entrega estimada: ${entrega} &nbsp;|&nbsp; Vendedor: ${vendedor}
+    </div>
+    <table class="pdf-table">
+      <thead>
+        <tr><th>#</th><th>Descripción</th><th style="text-align:center">Cant.</th><th style="text-align:right">P. Unit.</th><th style="text-align:right">P. Total</th></tr>
+      </thead>
+      <tbody>
+        ${rows}
+        <tr class="pdf-total-row">
+          <td colspan="4" style="text-align:right">Subtotal (sin IVA)</td>
+          <td style="text-align:right; font-family:monospace;">$${fmtN(totalSinIVA)}</td>
+        </tr>
+        <tr>
+          <td colspan="4" style="text-align:right">IVA (${(globals.iva*100).toFixed(0)}%)</td>
+          <td style="text-align:right; font-family:monospace;">$${fmtN(iva)}</td>
+        </tr>
+        <tr class="pdf-total-row">
+          <td colspan="4" style="text-align:right; font-size:15px;">TOTAL</td>
+          <td style="text-align:right; font-family:monospace; font-size:15px;">$${fmtN(total)}</td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="pdf-conditions">
+      <strong>Condición Comercial:</strong> ${condicion}<br>
+      <strong>Validez de la propuesta:</strong> 15 días hábiles.<br>
+      <strong>Precios expresados en:</strong> Pesos argentinos. Los valores en dólares se liquidarán al tipo de cambio CCL del día de pago.<br>
+      <strong>Nota:</strong> Esta propuesta incluye todos los costos de producción, logística y gestión. No incluye gastos de imprevistos no cotizados.
+    </div>
+    <p style="font-size:11px; color:#aaa; margin-top:20px; text-align:center;">Propuesta generada por Sistema Cotizador · Piola 2025</p>
+  `;
+}
+
+// ============================================================
+// SAVE / HISTORY
+// ============================================================
+// ============================================================
+// COTIZACIONES — Firebase
+// ============================================================
+let currentFirebaseId = null; // ID del doc actualmente cargado
+
+async function saveQuote() {
+  const g = getGlobals();
+  let totalVenta = 0;
+  items.forEach(i => { totalVenta += calcItem(i, g).ventaFinal; });
+
+  const quote = {
+    fecha:    document.getElementById('f-fecha').value,
+    cliente:  document.getElementById('f-cliente').value  || 'Sin cliente',
+    proyecto: document.getElementById('f-proyecto').value || 'Sin nombre',
+    vendedor: document.getElementById('f-vendedor').value || '—',
+    items:    JSON.parse(JSON.stringify(items)),
+    globals: {
+      dolarCCL:     parseFloat(document.getElementById('g-dolar-ccl').value),
+      logisticaBase:parseFloat(document.getElementById('g-logistica').value),
+      depoP:        parseFloat(document.getElementById('g-depo').value),
+      comisionP:    parseFloat(document.getElementById('g-comision').value),
+      iva:          parseFloat(document.getElementById('g-iva').value),
+      cft:          parseFloat(document.getElementById('f-condicion').value),
+    },
+    totalVenta,
+    savedAt:        new Date().toISOString(),
+    savedAtDisplay: new Date().toLocaleString('es-AR'),
+  };
+
+  try {
+    if (currentFirebaseId) {
+      // Ya existe — actualizar el documento existente
+      await window._fbUpdateDoc(window._fbDoc(window._db, 'cotizaciones', currentFirebaseId), quote);
+      toast('✓ Cotización actualizada en la nube', 'success');
+    } else {
+      // Nueva cotización
+      quote.id     = 'COT-' + String(quoteCounter).padStart(4, '0');
+      quote.estado = 'borrador';
+      const ref = await window._fbAddDoc(window._fbCollection(window._db, 'cotizaciones'), quote);
+      currentFirebaseId = ref.id;
+      quoteCounter++;
+      localStorage.setItem('piola-counter', quoteCounter);
+      document.getElementById('display-id').textContent = 'COT-' + String(quoteCounter).padStart(4,'0');
+      toast('✓ Cotización ' + quote.id + ' guardada en la nube', 'success');
+    }
+  } catch(e) {
+    toast('Error al guardar: ' + e.message, '');
+  }
+}
+
+async function updateEstado(firebaseId, nuevoEstado) {
+  try {
+    await window._fbUpdateDoc(window._fbDoc(window._db, 'cotizaciones', firebaseId), { estado: nuevoEstado });
+  } catch(e) { toast('Error: ' + e.message, ''); }
+}
+
+async function deleteQuote(firebaseId, cotId) {
+  if (!confirm('¿Eliminar la cotización ' + cotId + '?')) return;
+  try {
+    await window._fbDeleteDoc(window._fbDoc(window._db, 'cotizaciones', firebaseId));
+    toast('Cotización eliminada', '');
+  } catch(e) { toast('Error: ' + e.message, ''); }
+}
+
+function renderHistorial() {
+  const loading = document.getElementById('cot-loading');
+  const empty   = document.getElementById('cot-empty');
+  const tbody   = document.getElementById('historial-list');
+  const count   = document.getElementById('cot-count');
+  if (!tbody) return;
+  if (loading) loading.style.display = 'none';
+
+  const db = window._quotesDB || {};
+  const all = Object.values(db);
+
+  const search = (document.getElementById('cot-search')?.value || '').toLowerCase();
+  const estado = document.getElementById('cot-filtro-estado')?.value || '';
+
+  const filtered = all.filter(q =>
+    (!search || q.cliente.toLowerCase().includes(search) || q.proyecto.toLowerCase().includes(search)) &&
+    (!estado || q.estado === estado)
+  );
+
+  if (count) count.textContent = all.length + ' cotización' + (all.length !== 1 ? 'es' : '');
+
+  if (all.length === 0) {
+    empty.style.display = 'block'; tbody.innerHTML = ''; return;
+  }
+  empty.style.display = 'none';
+
+  const estadoOpts = ['borrador','enviada','aprobada','rechazada'];
+  const estadoLabel = { borrador:'Borrador', enviada:'Enviada', aprobada:'Aprobada', rechazada:'Rechazada' };
+
+  tbody.innerHTML = filtered.map(q => `
+    <tr style="border-bottom:1px solid rgba(42,42,56,0.4);" onmouseover="this.style.background='rgba(255,255,255,0.02)'" onmouseout="this.style.background=''">
+      <td style="padding:10px; font-family:var(--font-mono); color:var(--accent); font-size:12px; white-space:nowrap;">${q.id}</td>
+      <td style="padding:10px; font-size:13px; font-weight:600;">${q.cliente}</td>
+      <td style="padding:10px; font-size:12px; color:var(--muted);">${q.proyecto}</td>
+      <td style="padding:10px; font-family:var(--font-mono); font-size:11px; color:var(--muted); white-space:nowrap;">${q.fecha}</td>
+      <td style="padding:10px; font-family:var(--font-mono); font-size:13px; font-weight:700; color:var(--col-sale); text-align:right; white-space:nowrap;">$${fmtN(q.totalVenta||0)}</td>
+      <td style="padding:10px; text-align:center;">
+        <select onchange="updateEstado('${q.firebaseId}', this.value)"
+          style="background:transparent; border:none; font-size:11px; font-weight:700; font-family:var(--font-body); cursor:pointer; outline:none;"
+          class="badge badge-${q.estado||'borrador'}">
+          ${estadoOpts.map(e => `<option value="${e}" ${q.estado===e?'selected':''} style="background:var(--surface2); color:var(--text);">${estadoLabel[e]}</option>`).join('')}
+        </select>
+      </td>
+      <td style="padding:10px; font-size:12px; color:var(--muted);">${q.vendedor||'—'}</td>
+      <td style="padding:10px;">
+        <div style="display:flex; gap:6px; justify-content:flex-end;">
+          <button class="btn btn-secondary" style="font-size:11px; padding:5px 10px;" onclick="loadQuote('${q.firebaseId}')">✏️ Cargar</button>
+          <button class="del-btn" onclick="deleteQuote('${q.firebaseId}','${q.id}')">×</button>
+        </div>
+      </td>
+    </tr>
+  `).join('') || `<tr><td colspan="8" style="padding:20px; text-align:center; color:var(--muted);">Sin resultados para el filtro aplicado</td></tr>`;
+}
+
+function loadQuote(firebaseId) {
+  const q = (window._quotesDB || {})[firebaseId];
+  if (!q) { toast('No se encontró la cotización', ''); return; }
+  currentFirebaseId = firebaseId; // guardar para poder actualizar
+  items = JSON.parse(JSON.stringify(q.items));
+  items.forEach(i => {
+    if (i.cantLog === undefined) i.cantLog = 0;
+    if (i.extra   === undefined) i.extra   = 0;
+    if (i.margen  === undefined) i.margen  = 30;
+  });
+  nextId = items.reduce((m, i) => Math.max(m, i.id), 0) + 1;
+  document.getElementById('f-cliente').value   = q.cliente;
+  document.getElementById('f-proyecto').value  = q.proyecto;
+  document.getElementById('f-fecha').value     = q.fecha;
+  document.getElementById('f-vendedor').value  = q.vendedor || '';
+  document.getElementById('g-dolar-ccl').value = q.globals.dolarCCL;
+  document.getElementById('g-logistica').value = q.globals.logisticaBase;
+  document.getElementById('g-depo').value      = q.globals.depoP;
+  document.getElementById('g-comision').value  = q.globals.comisionP;
+  document.getElementById('g-iva').value       = q.globals.iva;
+  document.getElementById('f-condicion').value = q.globals.cft;
+  // Mostrar ID de la cotización cargada
+  document.getElementById('display-id').textContent = q.id;
+  recalcAll();
+  showView('editor', document.querySelectorAll('.tab')[0]);
+  toast('✓ Cotización ' + q.id + ' cargada — guardar actualiza esta cotización', 'success');
+}
+
+function nuevaCotizacion() {
+  currentFirebaseId = null;
+  items = [];
+  nextId = 1;
+  document.getElementById('f-cliente').value  = '';
+  document.getElementById('f-proyecto').value = '';
+  document.getElementById('f-vendedor').value = '';
+  document.getElementById('display-id').textContent = 'COT-' + String(quoteCounter).padStart(4,'0');
+  recalcAll();
+  toast('Nueva cotización lista', '');
+}
+
+// ============================================================
+// UTILS
+// ============================================================
+function fmtN(n) {
+  if (isNaN(n) || n === undefined) return '0';
+  return Math.round(n).toLocaleString('es-AR');
+}
+
+function fmtDec(n) {
+  if (isNaN(n) || n === undefined) return '0';
+  return parseFloat(n).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function toast(msg, type) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show ' + (type || '');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// Theme toggle
+function toggleTheme() {
+  const html = document.documentElement;
+  const isDark = html.getAttribute('data-theme') === 'dark';
+  html.setAttribute('data-theme', isDark ? 'light' : 'dark');
+  document.getElementById('theme-btn').textContent = isDark ? '🌙 Oscuro' : '☀️ Claro';
+  localStorage.setItem('piola-theme', isDark ? 'light' : 'dark');
+}
+const savedTheme = localStorage.getItem('piola-theme');
+if (savedTheme) {
+  document.documentElement.setAttribute('data-theme', savedTheme);
+  window.addEventListener('load', () => {
+    const btn = document.getElementById('theme-btn');
+    if (btn) btn.textContent = savedTheme === 'light' ? '🌙 Oscuro' : '☀️ Claro';
+  });
+}
+
+// Initial calc
+recalcAll();
+</script>
+</body>
+</html>
