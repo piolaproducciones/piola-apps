@@ -447,31 +447,27 @@ function renderTabla(quotes) {
 
 function renderFila(q) {
   const est = q.estado || 'borrador';
-  const acciones = [];
-
-  if (est === 'borrador')  acciones.push(`<button class="btn-estado enviada"   onclick="event.stopPropagation(); cambiarEstado('${q.firebaseId}','enviada')">→ Enviar</button>`);
-  if (est === 'enviada')   acciones.push(`<button class="btn-estado aprobada"  onclick="event.stopPropagation(); cambiarEstado('${q.firebaseId}','aprobada')">✓ Aprobar</button>`);
-  if (est === 'enviada')   acciones.push(`<button class="btn-estado rechazada" onclick="event.stopPropagation(); cambiarEstado('${q.firebaseId}','rechazada')">✕ Rechazar</button>`);
-  if (est === 'rechazada') acciones.push(`<button class="btn-estado enviada"   onclick="event.stopPropagation(); cambiarEstado('${q.firebaseId}','enviada')">↩ Reenviar</button>`);
-
   const estadoLabels = { borrador:'Borrador', enviada:'Enviada', aprobada:'Aprobada', rechazada:'Rechazada' };
+  const estados = ['borrador','enviada','aprobada','rechazada'];
+
+  const selector = `<select onchange="event.stopPropagation(); cambiarEstado('${q.firebaseId}', this.value)"
+    onclick="event.stopPropagation()"
+    style="background:var(--surface3); border:1px solid var(--border); border-radius:6px; color:var(--text);
+           padding:5px 8px; font-family:var(--font-body); font-size:11px; font-weight:600; outline:none; cursor:pointer;">
+    ${estados.map(e => `<option value="${e}" ${e===est?'selected':''}>${estadoLabels[e]}</option>`).join('')}
+  </select>`;
+
   return `<tr onclick="openDetalle('${q.firebaseId}')" style="cursor:pointer;">
     <td style="font-family:var(--font-mono); color:var(--accent); font-size:12px; white-space:nowrap;">${q.id}</td>
     <td style="font-weight:600;">${q.cliente}</td>
     <td style="color:var(--muted);">${q.proyecto}</td>
     <td style="font-family:var(--font-mono); font-size:11px; color:var(--muted); white-space:nowrap;">${q.fecha}</td>
     <td style="font-family:var(--font-mono); font-size:13px; font-weight:700; color:var(--col-sale); text-align:right; white-space:nowrap;">$${fmtN(q.totalVenta||0)}</td>
-    <td style="text-align:center;" onclick="event.stopPropagation()">
-      <span class="estado-badge estado-${est}">${estadoLabels[est]||est}</span>
-    </td>
+    <td style="text-align:center;" onclick="event.stopPropagation()">${selector}</td>
     <td style="color:var(--muted); font-size:12px;">${q.vendedor||'—'}</td>
     <td style="font-family:var(--font-mono); font-size:10px; color:var(--muted2); white-space:nowrap;">${q.savedAtDisplay||'—'}</td>
-    <td onclick="event.stopPropagation()" style="white-space:nowrap;">
-      <div style="display:flex; gap:4px; justify-content:flex-end; align-items:center;">
-        ${acciones.join('')}
-        <button class="del-btn" title="Ver detalle" onclick="event.stopPropagation(); openDetalle('${q.firebaseId}')">👁</button>
-        <button class="del-btn" title="Eliminar" onclick="event.stopPropagation(); borrarCotizacion('${q.firebaseId}')" style="color:rgba(255,87,87,0.4);">🗑</button>
-      </div>
+    <td onclick="event.stopPropagation()">
+      <button class="del-btn" title="Ver detalle" onclick="event.stopPropagation(); openDetalle('${q.firebaseId}')">👁</button>
     </td>
   </tr>`;
 }

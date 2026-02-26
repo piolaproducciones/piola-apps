@@ -269,6 +269,7 @@
           <option value="en-proceso">🔄 En proceso</option>
           <option value="completada">✅ Completada</option>
         </select>
+        <button onclick="borrarOrden()" style="background:rgba(255,87,87,0.1); border:1px solid rgba(255,87,87,0.25); color:var(--danger); border-radius:6px; padding:6px 12px; font-family:var(--font-body); font-size:11px; font-weight:600; cursor:pointer;">🗑 Borrar</button>
         <button class="del-btn" style="font-size:22px;" onclick="closeModal()">×</button>
       </div>
     </div>
@@ -310,7 +311,7 @@
 <!-- FIREBASE -->
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import { getFirestore, collection, doc, onSnapshot, addDoc, updateDoc, query, where } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import { getFirestore, collection, doc, onSnapshot, addDoc, updateDoc, deleteDoc } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
 const firebaseConfig = {
   apiKey: "AIzaSyAQNT8-8Q5v7Tfn9MIy530RSHdZj6Am390",
@@ -328,11 +329,9 @@ window._fbDoc       = doc;
 window._fbUpdateDoc = updateDoc;
 window._fbAddDoc    = addDoc;
 window._fbCollection= collection;
+window._fbDeleteDoc = deleteDoc;
 
 const fbStatus = document.getElementById('fb-status');
-
-// Las órdenes se crean desde historial.html al aprobar — solo escuchamos órdenes aquí
-// Escuchar órdenes en tiempo real
 
 // Primero cargar órdenes, luego arrancar listener de cotizaciones
 let cotListenerActivo = false;
@@ -348,19 +347,20 @@ onSnapshot(
     document.getElementById('table-wrapper').style.display = 'block';
     document.dispatchEvent(new CustomEvent('ordenes-updated'));
 
-    // Arrancar listener de cotizaciones solo una vez, cuando ya tenemos las órdenes
+    // Arrancar listener de cotizaciones DESPUÉS de tener las órdenes cargadas
     if (!cotListenerActivo) {
       cotListenerActivo = true;
       onSnapshot(
-        query(collection(db, 'cotizaciones'), where('estado', '==', 'aprobada')),
+        collection(db, 'cotizaciones'),
         async snap => {
           for (const d of snap.docs) {
-            const cot = { firebaseId: d.id, ...d.data() };
+            const cot = d.data();
+            if (cot.estado !== 'aprobada') continue;
             const ordenExiste = cot.ordenId && !!window._ordenes[cot.ordenId];
             if (!ordenExiste) {
               try {
                 const ordenRef = await addDoc(collection(db, 'ordenes'), {
-                  cotizacionId:  cot.firebaseId,
+                  cotizacionId:  d.id,
                   cotizacionNum: cot.id,
                   cliente:       cot.cliente,
                   proyecto:      cot.proyecto,
@@ -373,7 +373,7 @@ onSnapshot(
                   estado:        'pendiente',
                   creadoEn:      new Date().toISOString(),
                 });
-                await updateDoc(doc(db, 'cotizaciones', cot.firebaseId), { ordenId: ordenRef.id });
+                await updateDoc(doc(db, 'cotizaciones', d.id), { ordenId: ordenRef.id });
               } catch(e) { console.error('Error creando orden:', e); }
             }
           }
@@ -864,6 +864,22 @@ async function cambiarEstadoOrden(nuevoEstado) {
   try {
     await window._fbUpdateDoc(window._fbDoc(window._db, 'ordenes', ordenActivaId), { estado: nuevoEstado });
     toast('Estado actualizado', 'success');
+  } catch(e) { toast('Error: ' + e.message, ''); }
+}
+
+async function borrarOrden() {
+  if (!ordenActivaId) return;
+  if (!confirm('¿Borrar esta orden? La cotización volverá a estar disponible para ser aprobada de nuevo.')) return;
+  const o = window._ordenes[ordenActivaId];
+  try {
+    // Borrar la orden
+    await window._fbDeleteDoc(window._fbDoc(window._db, 'ordenes', ordenActivaId));
+    // Limpiar el ordenId en la cotización para que pueda generar una nueva orden
+    if (o && o.cotizacionId) {
+      await window._fbUpdateDoc(window._fbDoc(window._db, 'cotizaciones', o.cotizacionId), { ordenId: null });
+    }
+    closeModal();
+    toast('Orden eliminada', 'success');
   } catch(e) { toast('Error: ' + e.message, ''); }
 }
 
