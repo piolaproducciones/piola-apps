@@ -754,7 +754,9 @@ function previewCsv(input) {
       if (parts.length < 2) return;
       const nombre = parts[0];
       const unidad = parts[1] || 'unidad';
-      const costo  = parseFloat(parts[2]) || 0;
+      // Limpiar el costo: sacar $, espacios y puntos de miles, reemplazar coma decimal por punto
+      const costoRaw = (parts[2] || '0').replace(/\$/g, '').replace(/\s/g, '').replace(/\./g, '').replace(/,/g, '.');
+      const costo  = parseFloat(costoRaw) || 0;
       if (!nombre) return;
       csvParsed.push({ nombre, unidad, costo });
     });
