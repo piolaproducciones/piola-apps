@@ -1221,8 +1221,14 @@ function calcItem(item, globals) {
 // ============================================================
 async function loadProductosFromFirebase() {
   try {
-    const snap = await window._fbGetDocs(window._fbCollection(window._db, 'productos'));
-    productosDB = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const [snap1, snap2] = await Promise.all([
+      window._fbGetDocs(window._fbCollection(window._db, 'productos')),
+      window._fbGetDocs(window._fbCollection(window._db, 'productos-terminados')),
+    ]);
+    productosDB = [
+      ...snap1.docs.map(d => ({ id: d.id, ...d.data() })),
+      ...snap2.docs.map(d => ({ id: d.id, ...d.data() })),
+    ];
     buildDatalist();
     console.log(`✓ ${productosDB.length} productos cargados desde Firebase`);
   } catch(e) {

@@ -125,7 +125,8 @@
 
 <div class="tabs">
   <div class="tab active" onclick="showTab('materiales', this)">🧵 Materiales</div>
-  <div class="tab" onclick="showTab('productos', this)">📦 Productos</div>
+  <div class="tab" onclick="showTab('productos', this)">📦 Prod. Textiles</div>
+  <div class="tab" onclick="showTab('terminados', this)">🏷️ Prod. Terminados</div>
 </div>
 
 <div class="main">
@@ -238,6 +239,51 @@
   </div>
 </div>
 
+<div class="view" id="tab-terminados">
+  <div class="panel">
+    <div class="panel-header">
+      <span class="panel-title">Productos Terminados</span>
+      <span id="term-count" style="font-size:11px; color:var(--muted); font-family:var(--font-mono);">0 productos</span>
+    </div>
+    <div class="panel-body">
+      <div style="display:grid; grid-template-columns:2fr 1fr auto; gap:10px; align-items:end; margin-bottom:20px;">
+        <div class="form-group">
+          <label>Nombre del Producto</label>
+          <input type="text" class="form-control" id="term-nombre" placeholder="Ej: Botella con logo, Kit corporativo...">
+        </div>
+        <div class="form-group">
+          <label>Proveedor / Área</label>
+          <input type="text" class="form-control" id="term-proveedor" placeholder="Opcional">
+        </div>
+        <div class="form-group">
+          <label>&nbsp;</label>
+          <button class="btn btn-primary" onclick="addTerminado()">+ Crear Producto</button>
+        </div>
+      </div>
+      <input type="text" class="form-control" id="term-search" placeholder="🔍  Buscar producto terminado..." oninput="renderTerminados()" style="max-width:340px; margin-bottom:14px;">
+      <div id="term-loading" class="loading"><div class="spinner"></div> Cargando productos...</div>
+      <div class="table-wrapper">
+        <table style="width:100%; border-collapse:collapse;">
+          <thead><tr>
+            <th>Producto</th>
+            <th>Proveedor / Área</th>
+            <th style="text-align:center;">Materiales</th>
+            <th style="text-align:right; color:var(--col-sale);">Costo Total</th>
+            <th style="text-align:right;">Actualizado</th>
+            <th></th>
+          </tr></thead>
+          <tbody id="term-tbody"></tbody>
+        </table>
+      </div>
+      <div id="term-empty" class="empty-state" style="display:none;">
+        <div class="icon">🏷️</div>
+        No hay productos terminados cargados aún.
+        <p>Creá un producto y armá su ficha técnica con los materiales que lo componen.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
 </div><!-- main -->
 
 <!-- MODAL FICHA TÉCNICA -->
@@ -263,9 +309,12 @@
         <div style="display:grid; grid-template-columns:2fr 1fr auto; gap:10px; align-items:end;">
           <div class="form-group" style="margin:0;">
             <label>Material</label>
-            <select class="form-control" id="ficha-mat-sel" onchange="updateCantLabel()">
-              <option value="">— Seleccioná un material —</option>
-            </select>
+            <div style="position:relative;">
+              <input type="text" class="form-control" id="ficha-mat-search" placeholder="Buscar material..." autocomplete="off"
+                oninput="filterFichaMats(this.value)" onblur="setTimeout(()=>document.getElementById('ficha-mat-dropdown').style.display='none',200)">
+              <div id="ficha-mat-dropdown" style="display:none; position:absolute; top:100%; left:0; right:0; background:var(--surface2); border:1px solid var(--accent); border-radius:6px; max-height:200px; overflow-y:auto; z-index:999; margin-top:2px;"></div>
+              <input type="hidden" id="ficha-mat-sel">
+            </div>
           </div>
           <div class="form-group" style="margin:0;">
             <label id="ficha-cant-label">Cantidad</label>
@@ -383,7 +432,9 @@ window.addEventListener('load', () => {
 // ============================================================
 let materialesDB = {};  // { id: { nombre, unidad, costo } }
 let productosDB  = {};  // { id: { nombre, proveedor, componentes:[], costoTotal } }
+let terminadosDB = {};  // { id: { nombre, proveedor, componentes:[], costoTotal } }
 let fichaActivaId = null;
+let fichaActivaColeccion = 'productos'; // 'productos' o 'productos-terminados'
 
 // ============================================================
 // NAVIGATION
@@ -420,15 +471,28 @@ function initListeners() {
     }
   );
 
-  // Productos
+  // Productos Textiles
   window.fbOnSnapshot(
     window.fbCollection(window.db, 'productos'),
     snap => {
       productosDB = {};
       snap.forEach(d => productosDB[d.id] = { id: d.id, ...d.data() });
       renderProductos();
-      if (fichaActivaId) renderFichaComponentes();
+      if (fichaActivaId && fichaActivaColeccion === 'productos') renderFichaComponentes();
       document.getElementById('prod-loading').style.display = 'none';
+    },
+    err => console.error(err)
+  );
+
+  // Productos Terminados
+  window.fbOnSnapshot(
+    window.fbCollection(window.db, 'productos-terminados'),
+    snap => {
+      terminadosDB = {};
+      snap.forEach(d => terminadosDB[d.id] = { id: d.id, ...d.data() });
+      renderTerminados();
+      if (fichaActivaId && fichaActivaColeccion === 'productos-terminados') renderFichaComponentes();
+      document.getElementById('term-loading').style.display = 'none';
     },
     err => console.error(err)
   );
@@ -466,14 +530,16 @@ async function editMaterial(id) {
   try {
     await window.fbUpdateDoc(window.fbDoc(window.db, 'materiales', id), { nombre: nombre.trim() || m.nombre, costo });
     // Recalcular costos de todos los productos que usen este material
-    for (const p of Object.values(productosDB)) {
-      const comps = p.componentes || [];
-      const updated = comps.map(c => c.materialId === id ? { ...c, costoUnit: costo } : c);
-      const nuevoTotal = updated.reduce((s, c) => s + c.cantidad * c.costoUnit, 0);
-      if (JSON.stringify(comps) !== JSON.stringify(updated)) {
-        await window.fbUpdateDoc(window.fbDoc(window.db, 'productos', p.id), {
-          componentes: updated, costoTotal: nuevoTotal
-        });
+    for (const [colName, db] of [['productos', productosDB], ['productos-terminados', terminadosDB]]) {
+      for (const p of Object.values(db)) {
+        const comps = p.componentes || [];
+        const updated = comps.map(c => c.materialId === id ? { ...c, costoUnit: costo } : c);
+        const nuevoTotal = updated.reduce((s, c) => s + c.cantidad * c.costoUnit, 0);
+        if (JSON.stringify(comps) !== JSON.stringify(updated)) {
+          await window.fbUpdateDoc(window.fbDoc(window.db, colName, p.id), {
+            componentes: updated, costoTotal: nuevoTotal
+          });
+        }
       }
     }
     toast('✓ Material actualizado y productos recalculados', 'success');
@@ -481,7 +547,8 @@ async function editMaterial(id) {
 }
 
 async function deleteMaterial(id) {
-  const usado = Object.values(productosDB).some(p => (p.componentes || []).some(c => c.materialId === id));
+  const usado = [...Object.values(productosDB), ...Object.values(terminadosDB)]
+    .some(p => (p.componentes || []).some(c => c.materialId === id));
   const msg = usado
     ? 'Este material está en fichas de productos. ¿Eliminar igual?'
     : '¿Eliminar este material?';
@@ -590,16 +657,109 @@ function renderProductos() {
 }
 
 // ============================================================
+// PRODUCTOS TERMINADOS
+// ============================================================
+async function addTerminado() {
+  const nombre    = document.getElementById('term-nombre').value.trim();
+  const proveedor = document.getElementById('term-proveedor').value.trim();
+  if (!nombre) { toast('Ingresá un nombre de producto', ''); return; }
+  const existe = Object.values(terminadosDB).find(p => p.nombre.toLowerCase() === nombre.toLowerCase());
+  if (existe) { toast('Ya existe un producto con ese nombre', ''); return; }
+  try {
+    const ref = await window.fbAddDoc(window.fbCollection(window.db, 'productos-terminados'), {
+      nombre, proveedor, componentes: [], costoTotal: 0,
+      actualizadoEn: new Date().toLocaleDateString('es-AR')
+    });
+    document.getElementById('term-nombre').value = '';
+    document.getElementById('term-proveedor').value = '';
+    toast('✓ Producto creado', 'success');
+    openFicha(ref.id, 'productos-terminados');
+  } catch(e) { toast('Error: ' + e.message, ''); }
+}
+
+async function deleteTerminado(id) {
+  if (!confirm('¿Eliminar este producto?')) return;
+  try {
+    await window.fbDeleteDoc(window.fbDoc(window.db, 'productos-terminados', id));
+    toast('Producto eliminado', '');
+  } catch(e) { toast('Error: ' + e.message, ''); }
+}
+
+function renderTerminados() {
+  const search   = (document.getElementById('term-search')?.value || '').toLowerCase();
+  const prods    = Object.values(terminadosDB);
+  const filtered = prods.filter(p =>
+    p.nombre.toLowerCase().includes(search) || (p.proveedor || '').toLowerCase().includes(search)
+  );
+  const count = document.getElementById('term-count');
+  if (count) count.textContent = prods.length + ' producto' + (prods.length !== 1 ? 's' : '');
+  const tbody = document.getElementById('term-tbody');
+  const empty = document.getElementById('term-empty');
+  if (!tbody) return;
+  if (prods.length === 0) { empty.style.display = 'block'; tbody.innerHTML = ''; return; }
+  empty.style.display = 'none';
+  tbody.innerHTML = filtered.map(p => `
+    <tr>
+      <td style="font-size:13px; font-weight:600;">${p.nombre}</td>
+      <td style="font-size:12px; color:var(--muted);">${p.proveedor || '—'}</td>
+      <td style="text-align:center;">
+        <span class="badge badge-unit">${(p.componentes || []).length} mat.</span>
+      </td>
+      <td style="font-family:var(--font-mono); font-size:14px; font-weight:700; color:var(--col-sale); text-align:right;">
+        ${(p.componentes || []).length > 0 ? '$' + fmtN(p.costoTotal) : '<span style="color:var(--muted2); font-size:11px;">sin ficha</span>'}
+      </td>
+      <td style="font-size:11px; color:var(--muted2);">${p.actualizadoEn || '—'}</td>
+      <td style="display:flex; gap:6px; justify-content:flex-end;">
+        <button class="btn btn-primary" style="font-size:11px; padding:4px 12px;" onclick="openFicha('${p.id}','productos-terminados')">📋 Ficha</button>
+        <button class="del-btn" onclick="deleteTerminado('${p.id}')">×</button>
+      </td>
+    </tr>
+  `).join('') || `<tr><td colspan="6" style="padding:20px; text-align:center; color:var(--muted);">Sin resultados</td></tr>`;
+}
+
+// ============================================================
+// BUSCADOR DE MATERIALES EN FICHA
+// ============================================================
+function filterFichaMats(query) {
+  const dd = document.getElementById('ficha-mat-dropdown');
+  if (!query.trim()) { dd.style.display = 'none'; return; }
+  const matches = Object.values(materialesDB)
+    .filter(m => m.nombre.toLowerCase().includes(query.toLowerCase()))
+    .slice(0, 15);
+  if (matches.length === 0) { dd.style.display = 'none'; return; }
+  dd.innerHTML = matches.map(m => `
+    <div onclick="selectFichaMat('${m.id}','${m.nombre.replace(/'/g,"\\'")}','${m.unidad}')"
+      style="padding:8px 12px; cursor:pointer; font-size:12px; border-bottom:1px solid var(--border);"
+      onmouseover="this.style.background='var(--surface3)'" onmouseout="this.style.background=''">
+      <span style="font-weight:600;">${m.nombre}</span>
+      <span style="color:var(--muted); margin-left:8px;">${m.unidad} — $${fmtDec(m.costo)}</span>
+    </div>`).join('');
+  dd.style.display = 'block';
+}
+
+function selectFichaMat(id, nombre, unidad) {
+  document.getElementById('ficha-mat-search').value = nombre;
+  document.getElementById('ficha-mat-sel').value = id;
+  document.getElementById('ficha-mat-dropdown').style.display = 'none';
+  document.getElementById('ficha-cant-label').textContent = `Cantidad (${unidad})`;
+  document.getElementById('ficha-cant').focus();
+}
+
+// ============================================================
 // FICHA TÉCNICA
 // ============================================================
-function openFicha(id) {
-  // Wait a tick so Firestore listeners have time to populate if brand new
+function openFicha(id, coleccion = 'productos') {
   setTimeout(() => {
     fichaActivaId = id;
-    const p = productosDB[id];
+    fichaActivaColeccion = coleccion;
+    const db = coleccion === 'productos' ? productosDB : terminadosDB;
+    const p = db[id];
     const nombre = p ? p.nombre : '...';
     document.getElementById('ficha-titulo').textContent = nombre;
-    refreshFichaSelect();
+    // Reset buscador
+    document.getElementById('ficha-mat-search').value = '';
+    document.getElementById('ficha-mat-sel').value = '';
+    document.getElementById('ficha-cant-label').textContent = 'Cantidad';
     renderFichaComponentes();
     document.getElementById('ficha-modal').classList.add('open');
   }, 100);
@@ -628,7 +788,8 @@ function updateCantLabel() {
 }
 
 async function addComponente() {
-  const p = productosDB[fichaActivaId];
+  const activeDB = fichaActivaColeccion === 'productos' ? productosDB : terminadosDB;
+  const p = activeDB[fichaActivaId];
   if (!p) return;
   const matId = document.getElementById('ficha-mat-sel').value;
   const cant  = parseFloat(document.getElementById('ficha-cant').value);
@@ -645,10 +806,11 @@ async function addComponente() {
   }
   const costoTotal = comps.reduce((s, c) => s + c.cantidad * c.costoUnit, 0);
   try {
-    await window.fbUpdateDoc(window.fbDoc(window.db, 'productos', fichaActivaId), {
+    await window.fbUpdateDoc(window.fbDoc(window.db, fichaActivaColeccion, fichaActivaId), {
       componentes: comps, costoTotal, actualizadoEn: new Date().toLocaleDateString('es-AR')
     });
     document.getElementById('ficha-cant').value = '';
+    document.getElementById('ficha-mat-search').value = '';
     document.getElementById('ficha-mat-sel').value = '';
     document.getElementById('ficha-cant-label').textContent = 'Cantidad';
     toast('✓ Material agregado', 'success');
@@ -656,33 +818,36 @@ async function addComponente() {
 }
 
 async function removeComponente(materialId) {
-  const p = productosDB[fichaActivaId];
+  const activeDB = fichaActivaColeccion === 'productos' ? productosDB : terminadosDB;
+  const p = activeDB[fichaActivaId];
   if (!p) return;
   const comps     = (p.componentes || []).filter(c => c.materialId !== materialId);
   const costoTotal = comps.reduce((s, c) => s + c.cantidad * c.costoUnit, 0);
   try {
-    await window.fbUpdateDoc(window.fbDoc(window.db, 'productos', fichaActivaId), {
+    await window.fbUpdateDoc(window.fbDoc(window.db, fichaActivaColeccion, fichaActivaId), {
       componentes: comps, costoTotal, actualizadoEn: new Date().toLocaleDateString('es-AR')
     });
   } catch(e) { toast('Error: ' + e.message, ''); }
 }
 
 async function updateCantidad(materialId, nuevaCant) {
-  const p    = productosDB[fichaActivaId];
+  const activeDB = fichaActivaColeccion === 'productos' ? productosDB : terminadosDB;
+  const p    = activeDB[fichaActivaId];
   if (!p) return;
   const comps = (p.componentes || []).map(c =>
     c.materialId === materialId ? { ...c, cantidad: parseFloat(nuevaCant) || 0 } : c
   );
   const costoTotal = comps.reduce((s, c) => s + c.cantidad * c.costoUnit, 0);
   try {
-    await window.fbUpdateDoc(window.fbDoc(window.db, 'productos', fichaActivaId), {
+    await window.fbUpdateDoc(window.fbDoc(window.db, fichaActivaColeccion, fichaActivaId), {
       componentes: comps, costoTotal, actualizadoEn: new Date().toLocaleDateString('es-AR')
     });
   } catch(e) { toast('Error: ' + e.message, ''); }
 }
 
 function renderFichaComponentes() {
-  const p = productosDB[fichaActivaId];
+  const activeDB = fichaActivaColeccion === 'productos' ? productosDB : terminadosDB;
+  const p = activeDB[fichaActivaId];
   if (!p) return;
   const comps = p.componentes || [];
   const tbody = document.getElementById('ficha-tbody');
@@ -746,26 +911,22 @@ function previewCsv(input) {
     const text = e.target.result;
     const lines = text.split(/\r?\n/).filter(l => l.trim());
     csvParsed = [];
-    // Saltear la primera fila si es encabezado
-    const startLine = lines[0].toLowerCase().includes('nombre') ? 1 : 0;
 
-    lines.slice(startLine).forEach(line => {
+    lines.forEach(line => {
       // Soporte para separador coma o punto y coma
       const sep = line.includes(';') ? ';' : ',';
       const parts = line.split(sep).map(p => p.trim().replace(/^["']|["']$/g, ''));
       if (parts.length < 2) return;
       const nombre = parts[0];
       const unidad = parts[1] || 'unidad';
-      // Limpiar el costo: sacar $, espacios y puntos de miles, reemplazar coma decimal por punto
-      const costoRaw = (parts[2] || '0').replace(/\$/g, '').replace(/\s/g, '').replace(/\./g, '').replace(/,/g, '.');
-      const costo  = parseFloat(costoRaw) || 0;
+      const costo  = parseFloat(parts[2]) || 0;
       if (!nombre) return;
       csvParsed.push({ nombre, unidad, costo });
     });
 
     const tbody = document.getElementById('csv-preview-body');
     tbody.innerHTML = csvParsed.map(r => {
-      const existe = Object.values(materialesDB).find(m => m.nombre.toLowerCase() === r.nombre.toLowerCase());
+      const existe = materialesDB.find(m => m.nombre.toLowerCase() === r.nombre.toLowerCase());
       const accion = existe
         ? `<span style="color:var(--warn); font-size:10px; font-weight:700;">ACTUALIZAR</span>`
         : `<span style="color:var(--accent); font-size:10px; font-weight:700;">CREAR</span>`;
@@ -794,7 +955,7 @@ async function importCsv() {
 
   for (const r of csvParsed) {
     try {
-      const existe = Object.values(materialesDB).find(m => m.nombre.toLowerCase() === r.nombre.toLowerCase());
+      const existe = materialesDB.find(m => m.nombre.toLowerCase() === r.nombre.toLowerCase());
       if (existe) {
         await window.fbUpdateDoc(window.fbDoc(window.db, 'materiales', existe.id), {
           unidad: r.unidad,
