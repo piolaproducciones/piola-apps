@@ -765,7 +765,7 @@ function previewCsv(input) {
 
     const tbody = document.getElementById('csv-preview-body');
     tbody.innerHTML = csvParsed.map(r => {
-      const existe = materialesDB.find(m => m.nombre.toLowerCase() === r.nombre.toLowerCase());
+      const existe = Object.values(materialesDB).find(m => m.nombre.toLowerCase() === r.nombre.toLowerCase());
       const accion = existe
         ? `<span style="color:var(--warn); font-size:10px; font-weight:700;">ACTUALIZAR</span>`
         : `<span style="color:var(--accent); font-size:10px; font-weight:700;">CREAR</span>`;
@@ -794,7 +794,7 @@ async function importCsv() {
 
   for (const r of csvParsed) {
     try {
-      const existe = materialesDB.find(m => m.nombre.toLowerCase() === r.nombre.toLowerCase());
+      const existe = Object.values(materialesDB).find(m => m.nombre.toLowerCase() === r.nombre.toLowerCase());
       if (existe) {
         await window.fbUpdateDoc(window.fbDoc(window.db, 'materiales', existe.id), {
           unidad: r.unidad,
