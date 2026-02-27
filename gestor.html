@@ -746,8 +746,10 @@ function previewCsv(input) {
     const text = e.target.result;
     const lines = text.split(/\r?\n/).filter(l => l.trim());
     csvParsed = [];
+    // Saltear la primera fila si es encabezado
+    const startLine = lines[0].toLowerCase().includes('nombre') ? 1 : 0;
 
-    lines.forEach(line => {
+    lines.slice(startLine).forEach(line => {
       // Soporte para separador coma o punto y coma
       const sep = line.includes(';') ? ';' : ',';
       const parts = line.split(sep).map(p => p.trim().replace(/^["']|["']$/g, ''));
