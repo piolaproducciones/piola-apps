@@ -124,8 +124,9 @@
 </div>
 
 <div class="tabs">
-  <div class="tab active" onclick="showTab('materiales', this)">🧵 Materiales</div>
+  <div class="tab active" onclick="showTab('materiales', this)">🧵 Mat. Textil</div>
   <div class="tab" onclick="showTab('productos', this)">📦 Prod. Textiles</div>
+  <div class="tab" onclick="showTab('mat-terminados', this)">🔩 Mat. Terminados</div>
   <div class="tab" onclick="showTab('terminados', this)">🏷️ Prod. Terminados</div>
 </div>
 
@@ -188,6 +189,64 @@
         <div class="icon">🧵</div>
         No hay materiales cargados aún.
         <p>Agregá los materiales base para luego armar las fichas técnicas de cada producto.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MATERIALES TERMINADOS ===== -->
+<div class="view" id="tab-mat-terminados">
+  <div class="panel">
+    <div class="panel-header">
+      <span class="panel-title">Materiales — Productos Terminados</span>
+      <span id="matp-count" style="font-size:11px; color:var(--muted); font-family:var(--font-mono);">0 materiales</span>
+    </div>
+    <div class="panel-body">
+      <div style="display:grid; grid-template-columns:2fr 1fr 1fr auto; gap:10px; align-items:end; margin-bottom:20px;">
+        <div class="form-group">
+          <label>Nombre del Material</label>
+          <input type="text" class="form-control" id="matp-nombre" placeholder="Ej: Botella vidrio 500ml, Tapa rosca...">
+        </div>
+        <div class="form-group">
+          <label>Unidad</label>
+          <select class="form-control" id="matp-unidad">
+            <option value="unidad">Unidad</option>
+            <option value="metro">Metro</option>
+            <option value="kg">Kg</option>
+            <option value="gr">Gramo</option>
+            <option value="metro2">Metro²</option>
+            <option value="litro">Litro</option>
+            <option value="rollo">Rollo</option>
+            <option value="paquete">Paquete</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Costo por Unidad $</label>
+          <input type="number" class="form-control" id="matp-costo" placeholder="0" min="0" step="10">
+        </div>
+        <div class="form-group">
+          <label>&nbsp;</label>
+          <button class="btn btn-primary" onclick="addMaterialP()">+ Agregar</button>
+        </div>
+      </div>
+      <input type="text" class="form-control" id="matp-search" placeholder="🔍  Buscar material..." oninput="renderMaterialesP()" style="max-width:340px; margin-bottom:14px;">
+      <div id="matp-loading" class="loading"><div class="spinner"></div> Cargando materiales...</div>
+      <div class="table-wrapper">
+        <table style="width:100%; border-collapse:collapse;">
+          <thead><tr>
+            <th>Material</th>
+            <th style="text-align:center;">Unidad</th>
+            <th style="text-align:right; color:var(--col-cost);">Costo / Unidad</th>
+            <th style="text-align:right;">Usado en</th>
+            <th></th>
+          </tr></thead>
+          <tbody id="matp-tbody"></tbody>
+        </table>
+      </div>
+      <div id="matp-empty" class="empty-state" style="display:none;">
+        <div class="icon">🔩</div>
+        No hay materiales cargados aún.
+        <p>Agregá los materiales base para luego armar las fichas técnicas de productos terminados.</p>
       </div>
     </div>
   </div>
@@ -430,7 +489,8 @@ window.addEventListener('load', () => {
 // ============================================================
 // STATE
 // ============================================================
-let materialesDB = {};  // { id: { nombre, unidad, costo } }
+let materialesDB  = {};  // materiales textil
+let materialesPDB = {};  // materiales prod. terminados
 let productosDB  = {};  // { id: { nombre, proveedor, componentes:[], costoTotal } }
 let terminadosDB = {};  // { id: { nombre, proveedor, componentes:[], costoTotal } }
 let fichaActivaId = null;
@@ -452,14 +512,14 @@ function showTab(name, el) {
 function initListeners() {
   const fbStatus = document.getElementById('fb-status');
 
-  // Materiales
+  // Materiales Textil
   window.fbOnSnapshot(
     window.fbCollection(window.db, 'materiales'),
     snap => {
       materialesDB = {};
       snap.forEach(d => materialesDB[d.id] = { id: d.id, ...d.data() });
       renderMateriales();
-      if (fichaActivaId) refreshFichaSelect();
+      if (fichaActivaId && fichaActivaColeccion === 'productos') filterFichaMats('');
       fbStatus.textContent = '🟢 conectado';
       fbStatus.style.color = 'var(--accent)';
       document.getElementById('mat-loading').style.display = 'none';
@@ -469,6 +529,18 @@ function initListeners() {
       fbStatus.style.color = 'var(--danger)';
       console.error(err);
     }
+  );
+
+  // Materiales Prod. Terminados
+  window.fbOnSnapshot(
+    window.fbCollection(window.db, 'materiales-terminados'),
+    snap => {
+      materialesPDB = {};
+      snap.forEach(d => materialesPDB[d.id] = { id: d.id, ...d.data() });
+      renderMaterialesP();
+      document.getElementById('matp-loading').style.display = 'none';
+    },
+    err => console.error(err)
   );
 
   // Productos Textiles
@@ -530,8 +602,10 @@ async function editMaterial(id) {
   try {
     await window.fbUpdateDoc(window.fbDoc(window.db, 'materiales', id), { nombre: nombre.trim() || m.nombre, costo });
     // Recalcular costos de todos los productos que usen este material
-    for (const [colName, db] of [['productos', productosDB], ['productos-terminados', terminadosDB]]) {
-      for (const p of Object.values(db)) {
+    for (const p of Object.values(productosDB)) {
+      const colName = 'productos';
+      {
+
         const comps = p.componentes || [];
         const updated = comps.map(c => c.materialId === id ? { ...c, costoUnit: costo } : c);
         const nuevoTotal = updated.reduce((s, c) => s + c.cantidad * c.costoUnit, 0);
@@ -539,7 +613,6 @@ async function editMaterial(id) {
           await window.fbUpdateDoc(window.fbDoc(window.db, colName, p.id), {
             componentes: updated, costoTotal: nuevoTotal
           });
-        }
       }
     }
     toast('✓ Material actualizado y productos recalculados', 'success');
@@ -547,7 +620,7 @@ async function editMaterial(id) {
 }
 
 async function deleteMaterial(id) {
-  const usado = [...Object.values(productosDB), ...Object.values(terminadosDB)]
+  const usado = Object.values(productosDB)
     .some(p => (p.componentes || []).some(c => c.materialId === id));
   const msg = usado
     ? 'Este material está en fichas de productos. ¿Eliminar igual?'
@@ -657,6 +730,93 @@ function renderProductos() {
 }
 
 // ============================================================
+// MATERIALES PROD. TERMINADOS
+// ============================================================
+async function addMaterialP() {
+  const nombre = document.getElementById('matp-nombre').value.trim();
+  const unidad = document.getElementById('matp-unidad').value;
+  const costo  = parseFloat(document.getElementById('matp-costo').value) || 0;
+  if (!nombre) { toast('Ingresá un nombre de material', ''); return; }
+  const existe = Object.values(materialesPDB).find(m => m.nombre.toLowerCase() === nombre.toLowerCase());
+  if (existe) { toast('Ya existe un material con ese nombre', ''); return; }
+  try {
+    await window.fbAddDoc(window.fbCollection(window.db, 'materiales-terminados'), {
+      nombre, unidad, costo, creadoEn: new Date().toLocaleDateString('es-AR')
+    });
+    document.getElementById('matp-nombre').value = '';
+    document.getElementById('matp-costo').value = '';
+    document.getElementById('matp-nombre').focus();
+    toast('✓ Material agregado', 'success');
+  } catch(e) { toast('Error al guardar: ' + e.message, ''); }
+}
+
+async function editMaterialP(id) {
+  const m = materialesPDB[id];
+  if (!m) return;
+  const nombre = prompt('Nombre del material:', m.nombre);
+  if (nombre === null) return;
+  const costo = parseFloat(prompt(`Costo por ${m.unidad} $:`, m.costo));
+  if (isNaN(costo)) return;
+  try {
+    await window.fbUpdateDoc(window.fbDoc(window.db, 'materiales-terminados', id), { nombre: nombre.trim() || m.nombre, costo });
+    for (const p of Object.values(terminadosDB)) {
+      const comps = p.componentes || [];
+      const updated = comps.map(c => c.materialId === id ? { ...c, costoUnit: costo } : c);
+      const nuevoTotal = updated.reduce((s, c) => s + c.cantidad * c.costoUnit, 0);
+      if (JSON.stringify(comps) !== JSON.stringify(updated)) {
+        await window.fbUpdateDoc(window.fbDoc(window.db, 'productos-terminados', p.id), {
+          componentes: updated, costoTotal: nuevoTotal
+        });
+      }
+    }
+    toast('✓ Material actualizado y productos recalculados', 'success');
+  } catch(e) { toast('Error: ' + e.message, ''); }
+}
+
+async function deleteMaterialP(id) {
+  const usado = Object.values(terminadosDB).some(p => (p.componentes || []).some(c => c.materialId === id));
+  const msg = usado ? 'Este material está en fichas de productos. ¿Eliminar igual?' : '¿Eliminar este material?';
+  if (!confirm(msg)) return;
+  try {
+    await window.fbDeleteDoc(window.fbDoc(window.db, 'materiales-terminados', id));
+    toast('Material eliminado', '');
+  } catch(e) { toast('Error: ' + e.message, ''); }
+}
+
+function renderMaterialesP() {
+  const search   = (document.getElementById('matp-search')?.value || '').toLowerCase();
+  const mats     = Object.values(materialesPDB);
+  const filtered = mats.filter(m => m.nombre.toLowerCase().includes(search));
+  const count    = document.getElementById('matp-count');
+  if (count) count.textContent = mats.length + ' material' + (mats.length !== 1 ? 'es' : '');
+  const tbody = document.getElementById('matp-tbody');
+  const empty = document.getElementById('matp-empty');
+  if (!tbody) return;
+  if (mats.length === 0) { empty.style.display = 'block'; tbody.innerHTML = ''; return; }
+  empty.style.display = 'none';
+  const usoCount = {};
+  Object.values(terminadosDB).forEach(p =>
+    (p.componentes || []).forEach(c => { usoCount[c.materialId] = (usoCount[c.materialId] || 0) + 1; })
+  );
+  tbody.innerHTML = filtered.map(m => `
+    <tr>
+      <td style="font-size:13px; font-weight:600;">${m.nombre}</td>
+      <td style="text-align:center;"><span class="badge badge-unit">${m.unidad}</span></td>
+      <td style="font-family:var(--font-mono); font-size:13px; color:var(--col-cost); text-align:right;">
+        $${fmtDec(m.costo)} <span style="color:var(--muted); font-size:10px;">/ ${m.unidad}</span>
+      </td>
+      <td style="text-align:right; font-size:11px; color:var(--muted);">
+        ${usoCount[m.id] ? usoCount[m.id] + ' prod.' : '—'}
+      </td>
+      <td style="display:flex; gap:6px; justify-content:flex-end;">
+        <button class="btn btn-secondary" style="font-size:11px; padding:4px 10px;" onclick="editMaterialP('${m.id}')">✏️ Editar</button>
+        <button class="del-btn" onclick="deleteMaterialP('${m.id}')">×</button>
+      </td>
+    </tr>
+  `).join('') || `<tr><td colspan="5" style="padding:20px; text-align:center; color:var(--muted);">Sin resultados</td></tr>`;
+}
+
+// ============================================================
 // PRODUCTOS TERMINADOS
 // ============================================================
 async function addTerminado() {
@@ -723,7 +883,8 @@ function renderTerminados() {
 function filterFichaMats(query) {
   const dd = document.getElementById('ficha-mat-dropdown');
   if (!query.trim()) { dd.style.display = 'none'; return; }
-  const matches = Object.values(materialesDB)
+  const activeMatsDB = fichaActivaColeccion === 'productos-terminados' ? materialesPDB : materialesDB;
+  const matches = Object.values(activeMatsDB)
     .filter(m => m.nombre.toLowerCase().includes(query.toLowerCase()))
     .slice(0, 15);
   if (matches.length === 0) { dd.style.display = 'none'; return; }
@@ -738,6 +899,7 @@ function filterFichaMats(query) {
 }
 
 function selectFichaMat(id, nombre, unidad) {
+  // Works for both materialesDB and materialesPDB since we pass id directly
   document.getElementById('ficha-mat-search').value = nombre;
   document.getElementById('ficha-mat-sel').value = id;
   document.getElementById('ficha-mat-dropdown').style.display = 'none';
@@ -793,7 +955,8 @@ async function addComponente() {
   if (!p) return;
   const matId = document.getElementById('ficha-mat-sel').value;
   const cant  = parseFloat(document.getElementById('ficha-cant').value);
-  const mat   = materialesDB[matId];
+  const activeMatsDB = fichaActivaColeccion === 'productos-terminados' ? materialesPDB : materialesDB;
+  const mat   = activeMatsDB[matId];
   if (!mat)        { toast('Seleccioná un material', ''); return; }
   if (!cant || cant <= 0) { toast('Ingresá una cantidad válida', ''); return; }
 
@@ -885,6 +1048,7 @@ document.getElementById('ficha-modal').addEventListener('click', e => {
 // Enter key on material name
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('mat-nombre')?.addEventListener('keydown', e => { if (e.key === 'Enter') addMaterial(); });
+  document.getElementById('matp-nombre')?.addEventListener('keydown', e => { if (e.key === 'Enter') addMaterialP(); });
   document.getElementById('prod-nombre')?.addEventListener('keydown', e => { if (e.key === 'Enter') addProducto(); });
   document.getElementById('ficha-cant')?.addEventListener('keydown', e => { if (e.key === 'Enter') addComponente(); });
 });
