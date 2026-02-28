@@ -881,7 +881,7 @@
 // FIREBASE CONFIG
 // ============================================================
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import { getFirestore, collection, doc, getDocs, addDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import { getFirestore, collection, doc, getDocs, addDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy, runTransaction } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
 const firebaseConfig = {
   apiKey: "AIzaSyAQNT8-8Q5v7Tfn9MIy530RSHdZj6Am390",
@@ -905,6 +905,7 @@ window._fbDeleteDoc = deleteDoc;
 window._fbOnSnapshot= onSnapshot;
 window._fbQuery     = query;
 window._fbOrderBy   = orderBy;
+window._fbRunTransaction = runTransaction;
 
 // Iniciar listener de cotizaciones en tiempo real
 window.addEventListener('load', () => {
@@ -914,12 +915,6 @@ window.addEventListener('load', () => {
       window._quotesDB = {};
       snap.forEach(d => window._quotesDB[d.id] = { firebaseId: d.id, ...d.data() });
       if (typeof renderHistorial === 'function') renderHistorial();
-      // Detectar si venimos de historial con una cotización para editar
-      const editId = localStorage.getItem('piola-edit-id');
-      if (editId && window._quotesDB[editId]) {
-        localStorage.removeItem('piola-edit-id');
-        loadQuote(editId);
-      }
     },
     err => console.error('Error cotizaciones:', err)
   );
@@ -954,7 +949,7 @@ let materialesDB = [];
 window.onload = async () => {
   const today = new Date().toISOString().split('T')[0];
   document.getElementById('f-fecha').value = today;
-  document.getElementById('display-id').textContent = 'COT-' + String(quoteCounter).padStart(4,'0');
+  document.getElementById('display-id').textContent = 'COT-????';
   buildCFTGrid();
   buildDatalist();
   addRow();
@@ -1555,18 +1550,28 @@ async function saveQuote() {
 
   try {
     if (currentFirebaseId) {
-      // Ya existe — actualizar el documento existente
+      // Edición — actualizar el documento existente
       await window._fbUpdateDoc(window._fbDoc(window._db, 'cotizaciones', currentFirebaseId), quote);
       toast('✓ Cotización actualizada en la nube', 'success');
     } else {
-      // Nueva cotización
-      quote.id     = 'COT-' + String(quoteCounter).padStart(4, '0');
+      // Nueva cotización — obtener número atómico desde Firebase
+      const counterRef = window._fbDoc(window._db, 'config', 'counter');
+      let newNumber;
+      await window._fbRunTransaction(window._db, async (transaction) => {
+        const counterDoc = await transaction.get(counterRef);
+        if (!counterDoc.exists()) {
+          newNumber = 1;
+          transaction.set(counterRef, { value: 2 });
+        } else {
+          newNumber = (counterDoc.data().value || 1);
+          transaction.update(counterRef, { value: newNumber + 1 });
+        }
+      });
+      quote.id     = 'COT-' + String(newNumber).padStart(4, '0');
       quote.estado = 'borrador';
       const ref = await window._fbAddDoc(window._fbCollection(window._db, 'cotizaciones'), quote);
       currentFirebaseId = ref.id;
-      quoteCounter++;
-      localStorage.setItem('piola-counter', quoteCounter);
-      document.getElementById('display-id').textContent = 'COT-' + String(quoteCounter).padStart(4,'0');
+      document.getElementById('display-id').textContent = quote.id;
       toast('✓ Cotización ' + quote.id + ' guardada en la nube', 'success');
     }
   } catch(e) {
@@ -1677,7 +1682,7 @@ function nuevaCotizacion() {
   document.getElementById('f-cliente').value  = '';
   document.getElementById('f-proyecto').value = '';
   document.getElementById('f-vendedor').value = '';
-  document.getElementById('display-id').textContent = 'COT-' + String(quoteCounter).padStart(4,'0');
+  document.getElementById('display-id').textContent = 'COT-????';
   recalcAll();
   toast('Nueva cotización lista', '');
 }

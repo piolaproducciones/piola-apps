@@ -38,6 +38,8 @@
   <div class="collections" id="collections-info">
     <div class="col-row"><span class="col-name">cotizaciones</span><span class="col-count" id="count-cot">contando...</span></div>
     <div class="col-row"><span class="col-name">ordenes</span><span class="col-count" id="count-ord">contando...</span></div>
+    <div class="col-row"><span class="col-name">config/counter</span><span class="col-count" id="count-counter">leyendo...</span></div>
+    <div class="col-row"><span class="col-name">ordenes</span><span class="col-count" id="count-ord">contando...</span></div>
   </div>
 
   <button class="btn-danger" id="btn-limpiar" onclick="confirmarLimpieza()" disabled>
@@ -49,7 +51,7 @@
 
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import { getFirestore, collection, getDocs, deleteDoc, doc } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import { getFirestore, collection, getDocs, deleteDoc, doc, setDoc, getDoc } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
 const firebaseConfig = {
   apiKey: "AIzaSyAQNT8-8Q5v7Tfn9MIy530RSHdZj6Am390",
@@ -99,6 +101,10 @@ async function deleteCollection(name) {
 window.addEventListener('load', async () => {
   const c1 = await countCollection('cotizaciones', 'count-cot');
   const c2 = await countCollection('ordenes', 'count-ord');
+  try {
+    const snap = await getDoc(doc(db, 'config', 'counter'));
+    document.getElementById('count-counter').textContent = snap.exists() ? 'valor actual: ' + snap.data().value : 'no existe';
+  } catch(e) { document.getElementById('count-counter').textContent = 'error'; }
   document.getElementById('btn-limpiar').disabled = false;
 });
 
@@ -119,6 +125,10 @@ window.confirmarLimpieza = async () => {
     log('Borrando órdenes...', 'inf');
     const c2 = await deleteCollection('ordenes');
     log(`✓ ${c2} órdenes eliminadas`, 'ok');
+
+    log('Reseteando contador de cotizaciones...', 'inf');
+    await setDoc(doc(db, 'config', 'counter'), { value: 1 });
+    log('✓ Contador reseteado a 1 (próxima cotización será COT-0001)', 'ok');
 
     log('✅ Limpieza completada. Podés cerrar esta página.', 'ok');
 
