@@ -679,7 +679,6 @@
       <span class="panel-title">Tabla de Ítems</span>
       <div style="display:flex; gap:8px;">
         <span id="items-count" style="font-size:11px; color:var(--muted); font-family:var(--font-mono)">0 ítems</span>
-        <button onclick="loadProductosFromFirebase().then(() => toast('✓ Productos actualizados', 'success'))" style="background:transparent; border:1px solid var(--border); color:var(--muted); border-radius:6px; padding:4px 10px; font-family:var(--font-body); font-size:11px; font-weight:600; cursor:pointer; transition:all 0.2s;" title="Actualizar lista de productos del maestro" onmouseover="this.style.borderColor='var(--accent)'; this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'; this.style.color='var(--muted)'">↻ Actualizar productos</button>
       </div>
     </div>
     <div class="panel-body" style="padding: 0;">
@@ -695,7 +694,6 @@
               <th>Costo Unit.</th>
               <th class="calc" style="color:var(--col-cost)">Depósito %</th>
               <th>Cant. Log.</th>
-              <th class="calc" style="color:var(--col-cost)" title="Costo unitario final incluyendo logística y depósito">C.Unit.Final</th>
               <th class="calc" style="color:var(--col-cost)" title="Costo total incluyendo logística y depósito">C.Total</th>
               <th class="calc" style="color:var(--col-sale)">Margen %</th>
               <th class="calc" style="color:var(--col-sale)">Venta Unit.</th>
@@ -916,6 +914,12 @@ window.addEventListener('load', () => {
       window._quotesDB = {};
       snap.forEach(d => window._quotesDB[d.id] = { firebaseId: d.id, ...d.data() });
       if (typeof renderHistorial === 'function') renderHistorial();
+      // Detectar si venimos de historial con una cotización para editar
+      const editId = localStorage.getItem('piola-edit-id');
+      if (editId && window._quotesDB[editId]) {
+        localStorage.removeItem('piola-edit-id');
+        loadQuote(editId);
+      }
     },
     err => console.error('Error cotizaciones:', err)
   );
@@ -1134,7 +1138,6 @@ function renderTable() {
       </td>
       <td class="calc-cell cost" style="font-family:var(--font-mono); font-size:12px;">$${fmtN(calc.depo)}</td>
       <td style="width:70px;" title="Cantidad de envíos de logística"><input type="number" value="${item.cantLog}" min="0" step="1" onchange="updateItem(${item.id},'cantLog',parseFloat(this.value)||0)"></td>
-      <td class="calc-cell cost" title="Costo unitario final (costoTotal / qc)">$${fmtN(calc.costoUnitFinal)}</td>
       <td class="calc-cell cost" title="Costo Total = (Costo + Logística + Depósito) × Cant.Log.">$${fmtN(calc.costoTotalFinal)}</td>
       <td style="width:70px;">
         <div style="position:relative;">
@@ -1221,14 +1224,8 @@ function calcItem(item, globals) {
 // ============================================================
 async function loadProductosFromFirebase() {
   try {
-    const [snap1, snap2] = await Promise.all([
-      window._fbGetDocs(window._fbCollection(window._db, 'productos')),
-      window._fbGetDocs(window._fbCollection(window._db, 'productos-terminados')),
-    ]);
-    productosDB = [
-      ...snap1.docs.map(d => ({ id: d.id, ...d.data() })),
-      ...snap2.docs.map(d => ({ id: d.id, ...d.data() })),
-    ];
+    const snap = await window._fbGetDocs(window._fbCollection(window._db, 'productos'));
+    productosDB = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     buildDatalist();
     console.log(`✓ ${productosDB.length} productos cargados desde Firebase`);
   } catch(e) {
@@ -1689,8 +1686,8 @@ function nuevaCotizacion() {
 // UTILS
 // ============================================================
 function fmtN(n) {
-  if (isNaN(n) || n === undefined) return '0,00';
-  return n.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  if (isNaN(n) || n === undefined) return '0';
+  return Math.round(n).toLocaleString('es-AR');
 }
 
 function fmtDec(n) {

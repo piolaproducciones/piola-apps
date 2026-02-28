@@ -452,6 +452,8 @@ function renderFila(q) {
   if (puedeAprobar)  acciones.push(`<button class="btn-estado aprobada"  onclick="event.stopPropagation(); cambiarEstado('${q.firebaseId}','aprobada',this)">✓ Aprobar</button>`);
   if (puedeRechazar) acciones.push(`<button class="btn-estado rechazada" onclick="event.stopPropagation(); cambiarEstado('${q.firebaseId}','rechazada',this)">✕ Rechazar</button>`);
   if (puedeVolver)   acciones.push(`<button class="btn-estado enviada"   onclick="event.stopPropagation(); cambiarEstado('${q.firebaseId}','enviada',this)">↩ Reenviar</button>`);
+  // Editar disponible para cualquier estado excepto aprobada
+  if (est !== 'aprobada') acciones.push(`<button class="btn-estado" style="background:rgba(232,200,0,0.1); color:var(--accent); border:1px solid rgba(232,200,0,0.3);" onclick="event.stopPropagation(); editarCotizacion('${q.firebaseId}')">✏️ Editar</button>`);
 
   return `<tr onclick="openDetalle('${q.firebaseId}')" style="cursor:pointer;">
     <td style="font-family:var(--font-mono); color:var(--accent); font-size:12px; white-space:nowrap;">${q.id}</td>
@@ -478,6 +480,11 @@ async function cambiarEstado(firebaseId, nuevoEstado) {
     await window._fbUpdateDoc(window._fbDoc(window._db, 'cotizaciones', firebaseId), { estado: nuevoEstado });
     toast('Estado actualizado → ' + nuevoEstado, 'success');
   } catch(e) { toast('Error: ' + e.message, ''); }
+}
+
+function editarCotizacion(firebaseId) {
+  localStorage.setItem('piola-edit-id', firebaseId);
+  window.location.href = 'cotizador.html';
 }
 
 // ============================================================
