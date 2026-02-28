@@ -483,22 +483,57 @@
   .badge-warn { background: rgba(255,184,87,0.15); color: var(--warn); }
 
   /* TOAST */
-  .toast {
+  /* MODAL TOAST */
+  .toast-overlay {
     position: fixed;
-    bottom: 24px;
-    right: 24px;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+  }
+  .toast-overlay.show {
+    opacity: 1;
+    pointer-events: all;
+  }
+  .toast-box {
     background: var(--surface2);
     border: 1px solid var(--border);
     border-radius: var(--radius);
-    padding: 14px 20px;
-    font-size: 13px;
-    z-index: 999;
-    transform: translateY(80px);
-    opacity: 0;
-    transition: all 0.3s;
+    padding: 28px 32px;
+    min-width: 300px;
+    max-width: 420px;
+    text-align: center;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
   }
-  .toast.show { transform: translateY(0); opacity: 1; }
-  .toast.success { border-color: rgba(232,200,0,0.4); }
+  .toast-box.success { border-color: rgba(232,200,0,0.5); }
+  .toast-box.error   { border-color: rgba(255,87,87,0.5); }
+  .toast-msg {
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--text);
+  }
+  .toast-close {
+    background: var(--accent);
+    color: #0c0c0f;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 24px;
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    align-self: center;
+    transition: opacity 0.15s;
+  }
+  .toast-close:hover { opacity: 0.85; }
 
   /* ALERT */
   .alert {
@@ -882,7 +917,12 @@
 <datalist id="productos-datalist"></datalist>
 
 <!-- TOAST -->
-<div class="toast" id="toast"></div>
+<div class="toast-overlay" id="toast-overlay" onclick="closeToast()">
+  <div class="toast-box" id="toast-box" onclick="event.stopPropagation()">
+    <div class="toast-msg" id="toast-msg"></div>
+    <button class="toast-close" onclick="closeToast()">Aceptar</button>
+  </div>
+</div>
 
 <script type="module">
 // ============================================================
@@ -922,6 +962,12 @@ window.addEventListener('load', () => {
       window._quotesDB = {};
       snap.forEach(d => window._quotesDB[d.id] = { firebaseId: d.id, ...d.data() });
       if (typeof renderHistorial === 'function') renderHistorial();
+      // Detectar si venimos de historial con una cotización para editar
+      const editId = localStorage.getItem('piola-edit-id');
+      if (editId && window._quotesDB[editId]) {
+        localStorage.removeItem('piola-edit-id');
+        loadQuote(editId);
+      }
     },
     err => console.error('Error cotizaciones:', err)
   );
@@ -1767,10 +1813,14 @@ function fmtDec(n) {
 }
 
 function toast(msg, type) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.className = 'toast show ' + (type || '');
-  setTimeout(() => t.classList.remove('show'), 3000);
+  document.getElementById('toast-msg').textContent = msg;
+  const box = document.getElementById('toast-box');
+  box.className = 'toast-box ' + (type || '');
+  document.getElementById('toast-overlay').classList.add('show');
+}
+
+function closeToast() {
+  document.getElementById('toast-overlay').classList.remove('show');
 }
 
 // Theme toggle
