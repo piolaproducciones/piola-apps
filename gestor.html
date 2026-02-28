@@ -480,9 +480,14 @@ window.fbDeleteDoc = deleteDoc;
 window.fbOnSnapshot= onSnapshot;
 
 // ─── Iniciar listeners en tiempo real ───
-window.addEventListener('load', () => {
-  initListeners();
-});
+function tryInit() {
+  if (typeof initListeners === 'function') {
+    initListeners();
+  } else {
+    setTimeout(tryInit, 50);
+  }
+}
+window.addEventListener('load', tryInit);
 </script>
 
 <script>
@@ -601,18 +606,14 @@ async function editMaterial(id) {
   if (isNaN(costo)) return;
   try {
     await window.fbUpdateDoc(window.fbDoc(window.db, 'materiales', id), { nombre: nombre.trim() || m.nombre, costo });
-    // Recalcular costos de todos los productos que usen este material
     for (const p of Object.values(productosDB)) {
-      const colName = 'productos';
-      {
-
-        const comps = p.componentes || [];
-        const updated = comps.map(c => c.materialId === id ? { ...c, costoUnit: costo } : c);
-        const nuevoTotal = updated.reduce((s, c) => s + c.cantidad * c.costoUnit, 0);
-        if (JSON.stringify(comps) !== JSON.stringify(updated)) {
-          await window.fbUpdateDoc(window.fbDoc(window.db, colName, p.id), {
-            componentes: updated, costoTotal: nuevoTotal
-          });
+      const comps = p.componentes || [];
+      const updated = comps.map(c => c.materialId === id ? { ...c, costoUnit: costo } : c);
+      const nuevoTotal = updated.reduce((s, c) => s + c.cantidad * c.costoUnit, 0);
+      if (JSON.stringify(comps) !== JSON.stringify(updated)) {
+        await window.fbUpdateDoc(window.fbDoc(window.db, 'productos', p.id), {
+          componentes: updated, costoTotal: nuevoTotal
+        });
       }
     }
     toast('✓ Material actualizado y productos recalculados', 'success');
