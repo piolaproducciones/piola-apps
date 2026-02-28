@@ -693,8 +693,9 @@
               <th>Cant. Cliente</th>
               <th title="Unidades extra internas (ocultas al cliente)">Extra ±</th>
               <th>Costo Unit.</th>
-              <th class="calc" style="color:var(--col-cost)">Depósito %</th>
+              <th class="calc" style="color:var(--col-cost); display:none;">Depósito %</th>
               <th>Cant. Log.</th>
+              <th class="calc" style="color:var(--col-cost)" title="Costo total de logística para este item">Log. $</th>
               <th class="calc" style="color:var(--col-cost)" title="Costo total incluyendo logística y depósito">C.Total</th>
               <th class="calc" style="color:var(--col-sale)">Margen %</th>
               <th class="calc" style="color:var(--col-sale)">Venta Unit.</th>
@@ -1137,8 +1138,9 @@ function renderTable() {
           <input type="number" value="${item.costoUnit}" min="0" step="100" style="padding-left:18px;" onchange="updateItem(${item.id},'costoUnit',parseFloat(this.value)||0)">
         </div>
       </td>
-      <td class="calc-cell cost" style="font-family:var(--font-mono); font-size:12px;">$${fmtN(calc.depo)}</td>
+      <td class="calc-cell cost" style="font-family:var(--font-mono); font-size:12px; display:none;">$${fmtN(calc.depo)}</td>
       <td style="width:70px;" title="Cantidad de envíos de logística"><input type="number" value="${item.cantLog}" min="0" step="1" onchange="updateItem(${item.id},'cantLog',parseFloat(this.value)||0)"></td>
+      <td class="calc-cell cost" style="font-family:var(--font-mono); font-size:12px;" title="Logística total">$${fmtN(calc.logistica)}</td>
       <td class="calc-cell cost" title="Costo Total = (Costo + Logística + Depósito) × Cant.Log.">$${fmtN(calc.costoTotalFinal)}</td>
       <td style="width:70px;">
         <div style="position:relative;">
@@ -1450,12 +1452,11 @@ function buildPDF() {
   const rows = items.map((item, idx) => {
     const c = calcItem(item, globals);
     totalSinIVA += c.ventaFinal;
-    const unitSinIVA = item.qc > 0 ? c.ventaFinal / item.qc : 0;
     return `<tr>
       <td>${idx+1}</td>
       <td><strong>${item.desc || '—'}</strong>${item.proveedor ? '<br><span style="font-size:11px;color:#888">'+item.proveedor+'</span>' : ''}</td>
       <td style="text-align:center;">${item.qc}</td>
-      <td style="text-align:right; font-family:monospace;">$${fmtN(unitSinIVA)}</td>
+      <td style="text-align:right; font-family:monospace;">$${fmtN(c.ventaUnit)}</td>
       <td style="text-align:right; font-family:monospace; font-weight:bold;">$${fmtN(c.ventaFinal)}</td>
     </tr>`;
   }).join('');
