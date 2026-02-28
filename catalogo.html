@@ -155,6 +155,39 @@
   .toast-close:hover { opacity:0.85; }
 
   /* THEME */
+  /* TABS */
+  .main-tabs { background:var(--surface); border-bottom:1px solid var(--border); padding:0 28px; display:flex; gap:2px; }
+  .main-tab { padding:11px 20px; font-size:12px; font-weight:600; letter-spacing:0.8px; text-transform:uppercase; color:var(--muted); cursor:pointer; border-bottom:2px solid transparent; transition:all 0.2s; white-space:nowrap; }
+  .main-tab:hover { color:var(--text); }
+  .main-tab.active { color:var(--accent); border-bottom-color:var(--accent); }
+  .view-section { display:none; }
+  .view-section.active { display:block; }
+
+  /* MOVIMIENTOS */
+  .mov-layout { display:grid; grid-template-columns:360px 1fr; gap:20px; padding:24px 28px; align-items:start; }
+  .mov-form-panel { background:var(--surface); border:1px solid var(--border); border-radius:10px; overflow:hidden; position:sticky; top:70px; }
+  .mov-form-header { background:var(--surface2); padding:14px 18px; border-bottom:1px solid var(--border); font-size:11px; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:var(--muted); }
+  .mov-form-body { padding:18px; display:flex; flex-direction:column; gap:14px; }
+  .mov-history-panel { background:var(--surface); border:1px solid var(--border); border-radius:10px; overflow:hidden; }
+  .mov-history-header { background:var(--surface2); padding:14px 18px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
+  .mov-history-title { font-size:11px; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:var(--muted); }
+  .mov-row { display:grid; grid-template-columns:90px 1fr 1fr 70px 1fr; gap:10px; padding:12px 18px; border-bottom:1px solid rgba(42,42,56,0.5); align-items:center; font-size:12px; transition:background 0.15s; }
+  .mov-row:hover { background:rgba(255,255,255,0.02); }
+  .mov-row-header { background:var(--surface2); font-size:9px; font-weight:700; letter-spacing:0.8px; text-transform:uppercase; color:var(--muted); }
+  .mov-row-header:hover { background:var(--surface2); }
+  .mov-tipo { display:inline-flex; align-items:center; gap:4px; font-family:var(--font-mono); font-size:10px; padding:2px 8px; border-radius:10px; font-weight:700; white-space:nowrap; }
+  .mov-entrada { background:rgba(87,255,143,0.1); color:#57ff8f; border:1px solid rgba(87,255,143,0.25); }
+  .mov-salida  { background:rgba(255,87,87,0.1);  color:var(--danger); border:1px solid rgba(255,87,87,0.25); }
+  .mov-qty { font-family:var(--font-mono); font-size:13px; font-weight:700; text-align:center; }
+  .mov-qty.entrada { color:#57ff8f; }
+  .mov-qty.salida  { color:var(--danger); }
+  .mov-obs { font-size:11px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .mov-filters { display:flex; gap:8px; padding:10px 18px; border-bottom:1px solid var(--border); background:var(--surface2); flex-wrap:wrap; }
+  .mov-filter-input { background:var(--surface3); border:1px solid var(--border); border-radius:6px; color:var(--text); padding:5px 10px; font-family:var(--font-body); font-size:11px; outline:none; transition:border-color 0.2s; }
+  .mov-filter-input:focus { border-color:var(--accent); }
+
+  @media(max-width:800px) { .mov-layout { grid-template-columns:1fr; } }
+
   .theme-btn { background:var(--surface2); border:1px solid var(--border); color:var(--muted); border-radius:6px; padding:6px 12px; font-family:var(--font-body); font-size:11px; font-weight:600; cursor:pointer; transition:all 0.2s; }
   .theme-btn:hover { border-color:var(--accent); color:var(--accent); }
 
@@ -174,15 +207,23 @@
     <span class="role">Catálogo</span>
   </div>
   <div class="topbar-right">
-    <button class="btn btn-secondary btn-sm" onclick="openCatManager()">⚙ Categorías</button>
-    <button class="btn btn-secondary btn-sm" onclick="openBulkModal()">⬆ Carga masiva</button>
-    <button class="btn btn-primary btn-sm" onclick="openProductForm()">+ Nuevo producto</button>
+    <span id="topbar-catalogo-btns" style="display:inline-flex; gap:8px; align-items:center;">
+      <button class="btn btn-secondary btn-sm" onclick="openCatManager()">⚙ Categorías</button>
+      <button class="btn btn-secondary btn-sm" onclick="openBulkModal()">⬆ Carga masiva</button>
+      <button class="btn btn-primary btn-sm" onclick="openProductForm()">+ Nuevo producto</button>
+    </span>
     <button class="theme-btn" onclick="toggleTheme()" id="theme-btn">☀️ Claro</button>
     <span id="fb-status">🟡 conectando...</span>
   </div>
 </div>
 
-<!-- TOOLBAR -->
+<!-- MAIN TABS -->
+<div class="main-tabs">
+  <div class="main-tab active" onclick="switchTab('catalogo', this)">📦 Catálogo</div>
+  <div class="main-tab" onclick="switchTab('movimientos', this)">📋 Movimientos</div>
+</div>
+
+<!-- TOOLBAR (catalogo only) -->
 <div class="toolbar">
   <div class="search-wrap">
     <input type="text" id="search-input" placeholder="Buscar por nombre o código..." oninput="renderGrid()">
@@ -193,16 +234,116 @@
 </div>
 
 <!-- MAIN -->
-<div class="main">
-  <div class="grid-header">
-    <h2 id="grid-title">Todos los productos</h2>
-    <span class="grid-count" id="grid-count">—</span>
+<div class="view-section active" id="section-catalogo">
+  <div class="main">
+    <div class="grid-header">
+      <h2 id="grid-title">Todos los productos</h2>
+      <span class="grid-count" id="grid-count">—</span>
+    </div>
+    <div id="cat-loading" class="loading"><div class="spinner"></div> Cargando catálogo...</div>
+    <div class="cards-grid" id="cards-grid"></div>
+    <div id="cat-empty" class="empty-state" style="display:none;">
+      <div class="icon">📦</div>
+      No hay productos en esta categoría todavía.
+    </div>
   </div>
-  <div id="cat-loading" class="loading"><div class="spinner"></div> Cargando catálogo...</div>
-  <div class="cards-grid" id="cards-grid"></div>
-  <div id="cat-empty" class="empty-state" style="display:none;">
-    <div class="icon">📦</div>
-    No hay productos en esta categoría todavía.
+</div>
+
+<!-- MOVIMIENTOS -->
+<div class="view-section" id="section-movimientos">
+  <div class="mov-layout">
+
+    <!-- FORM -->
+    <div class="mov-form-panel">
+      <div class="mov-form-header">Registrar movimiento</div>
+      <div class="mov-form-body">
+
+        <div class="form-group">
+          <label>Fecha</label>
+          <input type="date" class="form-control" id="mov-fecha">
+        </div>
+
+        <div class="form-group">
+          <label>Tipo de movimiento</label>
+          <select class="form-control" id="mov-tipo" onchange="updateMovTipoStyle()">
+            <optgroup label="↑ Entradas">
+              <option value="Producción nueva">↑ Producción nueva</option>
+              <option value="Devolución cliente">↑ Devolución cliente</option>
+              <option value="Retorno">↑ Retorno</option>
+              <option value="Ajuste positivo">↑ Ajuste positivo</option>
+            </optgroup>
+            <optgroup label="↓ Salidas">
+              <option value="Venta">↓ Venta</option>
+              <option value="Muestra">↓ Muestra</option>
+              <option value="Merma / daño">↓ Merma / daño</option>
+              <option value="Ajuste negativo">↓ Ajuste negativo</option>
+            </optgroup>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Producto</label>
+          <select class="form-control" id="mov-producto" onchange="updateMovVariantes()">
+            <option value="">— Seleccioná un producto —</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Variante</label>
+          <select class="form-control" id="mov-variante">
+            <option value="">— Primero elegí producto —</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Cantidad</label>
+          <input type="number" class="form-control" id="mov-cantidad" min="1" value="1" placeholder="0">
+        </div>
+
+        <div class="form-group">
+          <label>Campaña / Cliente</label>
+          <input type="text" class="form-control" id="mov-campana" placeholder="Ej: Campaña verano 2025, Cliente XYZ...">
+        </div>
+
+        <div class="form-group">
+          <label>Observaciones</label>
+          <textarea class="form-control" id="mov-obs" placeholder="Notas adicionales..." style="min-height:60px;"></textarea>
+        </div>
+
+        <button class="btn btn-primary" style="width:100%;" onclick="saveMovimiento()">✓ Registrar movimiento</button>
+      </div>
+    </div>
+
+    <!-- HISTORY -->
+    <div class="mov-history-panel">
+      <div class="mov-history-header">
+        <span class="mov-history-title">Historial de movimientos</span>
+        <span id="mov-count" style="font-family:var(--font-mono); font-size:11px; color:var(--muted);">—</span>
+      </div>
+      <div class="mov-filters">
+        <input type="text" class="mov-filter-input" id="mov-filter-prod" placeholder="Filtrar por producto..." oninput="renderMovimientos()" style="flex:1; min-width:150px;">
+        <select class="mov-filter-input" id="mov-filter-tipo" onchange="renderMovimientos()">
+          <option value="">Todos los tipos</option>
+          <option value="entrada">Solo entradas</option>
+          <option value="salida">Solo salidas</option>
+        </select>
+        <input type="month" class="mov-filter-input" id="mov-filter-mes" onchange="renderMovimientos()">
+      </div>
+      <div class="mov-row mov-row-header">
+        <div>Fecha</div>
+        <div>Producto · Variante</div>
+        <div>Tipo</div>
+        <div style="text-align:center;">Cant.</div>
+        <div>Campaña / Obs.</div>
+      </div>
+      <div id="mov-tbody"></div>
+      <div id="mov-empty" class="empty-state" style="display:none; padding:30px;">
+        <div class="icon">📋</div>
+        Sin movimientos registrados todavía.
+      </div>
+      <div id="mov-loading" class="loading"><div class="spinner"></div> Cargando...</div>
+    </div>
+
   </div>
 </div>
 
@@ -385,7 +526,7 @@
 <!-- FIREBASE MODULE -->
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import { getFirestore, collection, doc, getDocs, addDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy, setDoc, getDoc } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import { getFirestore, collection, doc, getDocs, addDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy, setDoc, getDoc, limit } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 // Storage no usado — fotos en base64 en Firestore
 
 const firebaseConfig = {
@@ -423,6 +564,7 @@ window.addEventListener('load', tryInit);
 // STATE
 // ============================================================
 let catalogDB  = {};   // { id: product }
+let movimientosDB = {}; // { id: movimiento }
 let categorias = [];   // array of strings
 let activeCat  = '';
 let editingId  = null;
@@ -450,6 +592,16 @@ function initCatalog() {
       }
       renderCatFilters();
       renderCatSelect();
+    }
+  );
+
+  // Load movimientos
+  window._fbOnSnapshot(
+    window._fbQuery(window._fbCollection(window._db, 'movimientos'), window._fbOrderBy('fecha', 'desc'), window._fbOrderBy('createdAt', 'desc')),
+    snap => {
+      movimientosDB = {};
+      snap.forEach(d => movimientosDB[d.id] = { id: d.id, ...d.data() });
+      renderMovimientos();
     }
   );
 
@@ -894,6 +1046,174 @@ async function deleteCurrentProduct() {
   } catch(e) {
     toast('Error al eliminar: ' + e.message, 'error');
   }
+}
+
+
+// ============================================================
+// TAB SWITCHING
+// ============================================================
+function switchTab(tab, el) {
+  document.querySelectorAll('.main-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('section-' + tab).classList.add('active');
+  document.getElementById('toolbar-catalogo').style.display = tab === 'catalogo' ? 'flex' : 'none';
+  document.getElementById('topbar-catalogo-btns').style.display = tab === 'catalogo' ? 'inline-flex' : 'none';
+  if (tab === 'movimientos') {
+    populateMovProductos();
+    document.getElementById('mov-fecha').value = new Date().toISOString().split('T')[0];
+  }
+}
+
+// ============================================================
+// MOVIMIENTOS — FORM
+// ============================================================
+const TIPOS_ENTRADA = ['Producción nueva','Devolución cliente','Retorno','Ajuste positivo'];
+
+function updateMovTipoStyle() { /* visual only, logic handled by TIPOS_ENTRADA */ }
+
+function populateMovProductos() {
+  const sel = document.getElementById('mov-producto');
+  const current = sel.value;
+  const prods = Object.values(catalogDB).sort((a,b) => (a.nombre||'').localeCompare(b.nombre||''));
+  sel.innerHTML = '<option value="">— Seleccioná un producto —</option>' +
+    prods.map(p => `<option value="${p.id}" ${p.id===current?'selected':''}>${p.codigo ? '['+p.codigo+'] ' : ''}${p.nombre}</option>`).join('');
+  updateMovVariantes();
+}
+
+function updateMovVariantes() {
+  const prodId = document.getElementById('mov-producto').value;
+  const sel = document.getElementById('mov-variante');
+  if (!prodId) { sel.innerHTML = '<option value="">— Primero elegí producto —</option>'; return; }
+  const p = catalogDB[prodId];
+  if (!p) return;
+  const vars = p.variantes || [];
+  if (vars.length === 1) {
+    sel.innerHTML = `<option value="0">${vars[0].nombre || 'Variante 1'} (${vars[0].stock || 0} en stock)</option>`;
+  } else {
+    sel.innerHTML = vars.map((v, i) =>
+      `<option value="${i}">${v.nombre || 'Variante '+(i+1)} (${v.stock || 0} en stock)</option>`
+    ).join('');
+  }
+}
+
+async function saveMovimiento() {
+  const fecha    = document.getElementById('mov-fecha').value;
+  const tipo     = document.getElementById('mov-tipo').value;
+  const prodId   = document.getElementById('mov-producto').value;
+  const varIdx   = parseInt(document.getElementById('mov-variante').value);
+  const cantidad = parseInt(document.getElementById('mov-cantidad').value) || 0;
+  const campana  = document.getElementById('mov-campana').value.trim();
+  const obs      = document.getElementById('mov-obs').value.trim();
+
+  if (!fecha)   { toast('Seleccioná una fecha', 'error'); return; }
+  if (!prodId)  { toast('Seleccioná un producto', 'error'); return; }
+  if (isNaN(varIdx)) { toast('Seleccioná una variante', 'error'); return; }
+  if (cantidad < 1) { toast('La cantidad debe ser mayor a 0', 'error'); return; }
+
+  const p = catalogDB[prodId];
+  if (!p) { toast('Producto no encontrado', 'error'); return; }
+  const variantes = JSON.parse(JSON.stringify(p.variantes || []));
+  const v = variantes[varIdx];
+  if (!v) { toast('Variante no encontrada', 'error'); return; }
+
+  const esEntrada = TIPOS_ENTRADA.includes(tipo);
+  const currentStock = parseInt(v.stock) || 0;
+
+  // Validate salida
+  if (!esEntrada && cantidad > currentStock) {
+    toast(`Stock insuficiente. Solo hay ${currentStock} unidades de "${v.nombre}".`, 'error');
+    return;
+  }
+
+  const newStock = esEntrada ? currentStock + cantidad : currentStock - cantidad;
+  variantes[varIdx].stock = newStock;
+
+  try {
+    // Save movimiento
+    await window._fbAddDoc(window._fbCollection(window._db, 'movimientos'), {
+      fecha, tipo, esEntrada,
+      productoId: prodId,
+      productoNombre: p.nombre,
+      productoCodigo: p.codigo || '',
+      varianteIdx: varIdx,
+      varianteNombre: v.nombre || 'Variante ' + (varIdx + 1),
+      cantidad,
+      campana, obs,
+      stockAntes: currentStock,
+      stockDespues: newStock,
+      createdAt: new Date().toISOString()
+    });
+
+    // Update stock in product
+    await window._fbUpdateDoc(window._fbDoc(window._db, 'catalogo', prodId), { variantes });
+
+    // Reset form
+    document.getElementById('mov-cantidad').value = 1;
+    document.getElementById('mov-campana').value = '';
+    document.getElementById('mov-obs').value = '';
+    updateMovVariantes();
+
+    toast(`✓ Movimiento registrado. Stock de "${v.nombre}": ${currentStock} → ${newStock}`, 'success');
+  } catch(e) {
+    toast('Error al registrar: ' + e.message, 'error');
+  }
+}
+
+// ============================================================
+// MOVIMIENTOS — HISTORY
+// ============================================================
+function renderMovimientos() {
+  const tbody   = document.getElementById('mov-tbody');
+  const empty   = document.getElementById('mov-empty');
+  const loading = document.getElementById('mov-loading');
+  const count   = document.getElementById('mov-count');
+  const filtProd = (document.getElementById('mov-filter-prod')?.value || '').toLowerCase();
+  const filtTipo = document.getElementById('mov-filter-tipo')?.value || '';
+  const filtMes  = document.getElementById('mov-filter-mes')?.value || '';
+
+  loading.style.display = 'none';
+
+  let movs = Object.values(movimientosDB).sort((a,b) => {
+    if (b.fecha !== a.fecha) return b.fecha.localeCompare(a.fecha);
+    return (b.createdAt||'').localeCompare(a.createdAt||'');
+  });
+
+  if (filtProd) movs = movs.filter(m =>
+    (m.productoNombre||'').toLowerCase().includes(filtProd) ||
+    (m.productoCodigo||'').toLowerCase().includes(filtProd)
+  );
+  if (filtTipo === 'entrada') movs = movs.filter(m => m.esEntrada);
+  if (filtTipo === 'salida')  movs = movs.filter(m => !m.esEntrada);
+  if (filtMes) movs = movs.filter(m => (m.fecha||'').startsWith(filtMes));
+
+  count.textContent = movs.length + ' movimiento' + (movs.length !== 1 ? 's' : '');
+
+  if (movs.length === 0) {
+    tbody.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+
+  tbody.innerHTML = movs.map(m => {
+    const cls     = m.esEntrada ? 'entrada' : 'salida';
+    const sign    = m.esEntrada ? '+' : '−';
+    const tipoCls = m.esEntrada ? 'mov-entrada' : 'mov-salida';
+    const prodLabel = (m.productoCodigo ? '['+m.productoCodigo+'] ' : '') + (m.productoNombre||'—');
+    const obs = [m.campana, m.obs].filter(Boolean).join(' · ') || '—';
+    const fechaFmt = m.fecha ? m.fecha.split('-').reverse().join('/') : '—';
+    return `<div class="mov-row">
+      <div style="font-family:var(--font-mono); font-size:11px; color:var(--muted);">${fechaFmt}</div>
+      <div>
+        <div style="font-size:12px; font-weight:600;">${prodLabel}</div>
+        <div style="font-size:10px; color:var(--muted); margin-top:1px;">${m.varianteNombre||''}</div>
+      </div>
+      <div><span class="mov-tipo ${tipoCls}">${m.tipo}</span></div>
+      <div class="mov-qty ${cls}">${sign}${m.cantidad}</div>
+      <div class="mov-obs" title="${obs}">${obs}</div>
+    </div>`;
+  }).join('');
 }
 
 // ============================================================
