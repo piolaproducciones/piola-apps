@@ -515,6 +515,7 @@
   }
   .toast-box.success { border-color: rgba(232,200,0,0.5); }
   .toast-box.error   { border-color: rgba(255,87,87,0.5); }
+  .toast-box.confirm { border-color: rgba(232,200,0,0.5); }
   .toast-msg {
     font-size: 14px;
     line-height: 1.5;
@@ -732,7 +733,7 @@
               <th>Cant. Log.</th>
               <th class="calc" style="color:var(--col-cost)" title="Costo total de logística para este item">Log. $</th>
               <th class="calc" style="color:var(--col-cost)" title="Costo total incluyendo logística y depósito">C.Total</th>
-              <th class="calc" style="color:var(--col-sale)">Margen %</th>
+              <th class="calc" style="color:var(--col-sale)" title="Multiplicador: 2 = doble del costo, 1.5 = 50% más...">Markup ×</th>
               <th class="calc" style="color:var(--col-sale)">Venta Unit.</th>
               <th class="calc" style="color:var(--col-fin)">Financ.</th>
               <th class="calc" style="color:var(--col-fin)">Com.Ag.</th>
@@ -1150,7 +1151,7 @@ function selectCFT(rate) {
 // ============================================================
 function addRow() {
   const id = nextId++;
-  items.push({ id, proveedor:'', desc:'', qc:1, extra:0, costoUnit:0, cantLog:0, margen:50 });
+  items.push({ id, proveedor:'', desc:'', qc:1, extra:0, costoUnit:0, cantLog:0, margen:2 });
   renderTable();
 }
 
@@ -1190,8 +1191,8 @@ function renderTable() {
       <td class="calc-cell cost" title="Costo Total = (Costo + Logística + Depósito) × Cant.Log.">$${fmtN(calc.costoTotalFinal)}</td>
       <td style="width:70px;">
         <div style="position:relative;">
-          <input type="number" value="${item.margen}" min="0" max="99" step="0.5" style="padding-right:18px; color:var(--col-sale); font-family:var(--font-mono);" onchange="updateItem(${item.id},'margen',parseFloat(this.value)||0)">
-          <span style="position:absolute; right:7px; top:50%; transform:translateY(-50%); color:var(--col-sale); font-family:var(--font-mono); font-size:11px; pointer-events:none;">%</span>
+          <input type="number" value="${item.margen}" min="1" step="0.05" style="padding-right:18px; color:var(--col-sale); font-family:var(--font-mono);" onchange="updateItem(${item.id},'margen',parseFloat(this.value)||1)">
+          <span style="position:absolute; right:7px; top:50%; transform:translateY(-50%); color:var(--col-sale); font-family:var(--font-mono); font-size:11px; pointer-events:none;">×</span>
         </div>
       </td>
       <td class="calc-cell sale">$${fmtN(calc.ventaUnit)}</td>
@@ -1253,8 +1254,7 @@ function calcItem(item, globals) {
   const costoUnitFinal = item.qc > 0 ? costoTotalFinal / item.qc : 0;
 
   // Precio de venta unitario aplicando mark-up sobre costo unitario final
-  const margenP = (item.margen || 0) / 100;
-  const ventaUnit = margenP < 1 ? costoUnitFinal / (1 - margenP) : costoUnitFinal;
+  const ventaUnit = costoUnitFinal * (item.margen || 1);
 
   // Financiación (CFT) sobre precio de venta unitario
   const financ = ventaUnit * globals.cft;
@@ -1674,7 +1674,7 @@ async function saveQuote() {
     if (currentFirebaseId) {
       // Ya existe — actualizar el documento existente
       await window._fbUpdateDoc(window._fbDoc(window._db, 'cotizaciones', currentFirebaseId), quote);
-      toast('✓ Cotización actualizada en la nube', 'success');
+      toast('✓ Cotización actualizada en la nube', 'confirm');
     } else {
       // Nueva cotización
       quote.id     = 'COT-' + String(quoteCounter).padStart(4, '0');
@@ -1684,7 +1684,7 @@ async function saveQuote() {
       quoteCounter++;
       localStorage.setItem('piola-counter', quoteCounter);
       document.getElementById('display-id').textContent = 'COT-' + String(quoteCounter).padStart(4,'0');
-      toast('✓ Cotización ' + quote.id + ' guardada en la nube', 'success');
+      toast('✓ Cotización ' + quote.id + ' guardada en la nube', 'confirm');
     }
   } catch(e) {
     toast('Error al guardar: ' + e.message, 'error');
@@ -1767,7 +1767,7 @@ function loadQuote(firebaseId) {
   items.forEach(i => {
     if (i.cantLog === undefined) i.cantLog = 0;
     if (i.extra   === undefined) i.extra   = 0;
-    if (i.margen  === undefined) i.margen  = 30;
+    if (i.margen  === undefined) i.margen  = 2;
   });
   nextId = items.reduce((m, i) => Math.max(m, i.id), 0) + 1;
   document.getElementById('f-cliente').value   = q.cliente;
@@ -1784,7 +1784,7 @@ function loadQuote(firebaseId) {
   document.getElementById('display-id').textContent = q.id;
   recalcAll();
   showView('editor', document.querySelectorAll('.tab')[0]);
-  toast('✓ Cotización ' + q.id + ' cargada — guardar actualiza esta cotización', 'success');
+  toast('✓ Cotización ' + q.id + ' cargada. Al guardar se actualiza esta cotización.', 'confirm');
 }
 
 function nuevaCotizacion() {
@@ -1813,10 +1813,10 @@ function fmtDec(n) {
 }
 
 function toast(msg, type) {
-  if (type === 'error') {
+  if (type === 'error' || type === 'confirm') {
     // Blocking modal for errors
     document.getElementById('toast-msg').textContent = msg;
-    document.getElementById('toast-box').className = 'toast-box error';
+    document.getElementById('toast-box').className = 'toast-box ' + type;
     document.getElementById('toast-overlay').classList.add('show');
   } else {
     // Silent bottom-right toast for info/success
