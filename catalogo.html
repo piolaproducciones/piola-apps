@@ -612,6 +612,7 @@ function initCatalog() {
       catalogDB = {};
       snap.forEach(d => catalogDB[d.id] = { id: d.id, ...d.data() });
       renderGrid();
+      if (typeof populateMovProductos === 'function') populateMovProductos();
       fbStatus.textContent = '🟢 conectado';
       fbStatus.style.color = 'var(--accent)';
       document.getElementById('cat-loading').style.display = 'none';
