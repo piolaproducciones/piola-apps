@@ -926,6 +926,17 @@
 <!-- DATALIST para autocomplete de productos -->
 <datalist id="productos-datalist"></datalist>
 
+
+<!-- ===== MODAL: VARIANTE CATÁLOGO ===== -->
+<div class="toast-overlay" id="variante-overlay" onclick="closeVariantePicker()" style="z-index:1001;">
+  <div class="toast-box" id="variante-box" onclick="event.stopPropagation()" style="max-width:380px; text-align:left; gap:12px;">
+    <div style="font-size:11px; font-weight:700; letter-spacing:0.8px; text-transform:uppercase; color:var(--muted);">Elegí la variante</div>
+    <div style="font-size:14px; font-weight:700;" id="vp-nombre"></div>
+    <div id="vp-variantes" style="display:flex; flex-direction:column; gap:8px;"></div>
+    <button class="toast-close" style="background:var(--surface2); color:var(--muted); border:1px solid var(--border);" onclick="closeVariantePicker()">Cancelar</button>
+  </div>
+</div>
+
 <!-- TOAST -->
 <div class="toast-overlay" id="toast-overlay" onclick="closeToast()">
   <div class="toast-box" id="toast-box" onclick="event.stopPropagation()">
@@ -1005,6 +1016,7 @@ let nextId = 1;
 let quoteCounter = parseInt(localStorage.getItem('piola-counter') || '1');
 let productosDB = [];
 let materialesDB = [];
+let catalogoDB = []; // productos del catálogo de stock
 
 // ============================================================
 // INIT
@@ -1018,6 +1030,7 @@ window.onload = async () => {
   addRow();
   fetchDolar();
   await loadProductosFromFirebase();
+  await loadCatalogoFromFirebase();
 };
 
 // ============================================================
@@ -1286,32 +1299,93 @@ async function loadProductosFromFirebase() {
 }
 
 // ============================================================
+// FIREBASE — cargar catálogo de stock para autocomplete
+// ============================================================
+async function loadCatalogoFromFirebase() {
+  try {
+    const snap = await window._fbGetDocs(window._fbCollection(window._db, 'catalogo'));
+    catalogoDB = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    buildDatalist();
+    console.log(`✓ ${catalogoDB.length} productos de catálogo cargados`);
+  } catch(e) {
+    console.warn('Error cargando catálogo:', e);
+  }
+}
+
+// ============================================================
 // DATALIST (autocomplete en editor)
 
 // ============================================================
 function buildDatalist() {
   const dl = document.getElementById('productos-datalist');
   if (!dl) return;
-  dl.innerHTML = productosDB.map(p => `<option value="${p.nombre}">`).join('');
+  const maestroOpts = productosDB.map(p => `<option value="${p.nombre}" data-source="maestro">`).join('');
+  const catalogoOpts = catalogoDB.map(p => {
+    const label = (p.codigo ? '[' + p.codigo + '] ' : '') + p.nombre;
+    return `<option value="${label}" data-source="catalogo" data-id="${p.id}">`;
+  }).join('');
+  dl.innerHTML = maestroOpts + catalogoOpts;
 }
 
 function autocompletarProducto(itemId, nombre) {
+  // Check maestro first
   const match = productosDB.find(p => p.nombre.toLowerCase() === nombre.toLowerCase());
-  if (!match) return;
+  if (match) {
+    const item = items.find(i => i.id === itemId);
+    if (!item) return;
+    if (match.costoTotal > 0) item.costoUnit = match.costoTotal;
+    if (match.proveedor)      item.proveedor = match.proveedor;
+    if (match.componentes && match.componentes.length > 0) {
+      item.receta = match.componentes.map(c => ({
+        nombre:   c.nombre,
+        cantidad: c.cantidad,
+        costoUnit: c.costoUnit,
+      }));
+    } else {
+      item.receta = null;
+    }
+    recalcAll();
+    return;
+  }
+
+  // Check catalogo — match by "[CODE] nombre" or just nombre
+  const matchCat = catalogoDB.find(p => {
+    const label = (p.codigo ? '[' + p.codigo + '] ' : '') + p.nombre;
+    return label.toLowerCase() === nombre.toLowerCase() ||
+           p.nombre.toLowerCase() === nombre.toLowerCase();
+  });
+  if (matchCat) {
+    const variantes = matchCat.variantes || [];
+    if (variantes.length === 1) {
+      // Only one variant — apply directly
+      aplicarVarianteCatalogo(itemId, matchCat, 0);
+    } else if (variantes.length > 1) {
+      // Multiple variants — open picker modal
+      openVariantePicker(itemId, matchCat);
+    }
+  }
+}
+
+function aplicarVarianteCatalogo(itemId, prod, varIdx) {
   const item = items.find(i => i.id === itemId);
   if (!item) return;
-  if (match.costoTotal > 0) item.costoUnit = match.costoTotal;
-  if (match.proveedor)      item.proveedor = match.proveedor;
-  // Guardar receta si el producto tiene componentes (no se muestra, solo se usa en Aprobados)
-  if (match.componentes && match.componentes.length > 0) {
-    item.receta = match.componentes.map(c => ({
-      nombre:   c.nombre,
-      cantidad: c.cantidad,
-      costoUnit: c.costoUnit,
-    }));
-  } else {
-    item.receta = null;
+  const v = prod.variantes[varIdx];
+  if (!v) return;
+
+  // Stock check — warn but don't block
+  const stock = parseInt(v.stock) || 0;
+  if (stock === 0) {
+    toast(`⚠ Sin stock disponible de "${v.nombre}". Consultá con depósito antes de cotizar.`, 'error');
+  } else if (stock < item.qc) {
+    toast(`⚠ Stock insuficiente: hay ${stock} u. de "${v.nombre}". Consultá con depósito.`, 'error');
   }
+
+  item.costoUnit = v.costo || 0;
+  item.proveedor = prod.nombre + (prod.codigo ? ' [' + prod.codigo + ']' : '');
+  item.desc = prod.nombre + ' — ' + v.nombre;
+  item.receta = null;
+  item._catalogoId = prod.id;
+  item._varianteIdx = varIdx;
   recalcAll();
 }
 
@@ -1813,6 +1887,51 @@ function fmtN(n) {
 function fmtDec(n) {
   if (isNaN(n) || n === undefined) return '0';
   return parseFloat(n).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+// ============================================================
+// VARIANTE PICKER (catálogo)
+// ============================================================
+let _vpItemId = null;
+let _vpProd   = null;
+
+function openVariantePicker(itemId, prod) {
+  _vpItemId = itemId;
+  _vpProd   = prod;
+  document.getElementById('vp-nombre').textContent = (prod.codigo ? '[' + prod.codigo + '] ' : '') + prod.nombre;
+  const container = document.getElementById('vp-variantes');
+  container.innerHTML = (prod.variantes || []).map((v, i) => {
+    const stock = parseInt(v.stock) || 0;
+    const stockCls = stock === 0 ? 'color:#ff5757;' : stock <= 5 ? 'color:#ffaa33;' : 'color:#57ff8f;';
+    const stockLbl = stock === 0 ? 'Sin stock' : stock + ' en stock';
+    return `<button onclick="selectVariante(${i})" style="
+      background:var(--surface3); border:1px solid var(--border); border-radius:8px;
+      padding:12px 16px; cursor:pointer; text-align:left; transition:all 0.15s;
+      display:flex; justify-content:space-between; align-items:center; gap:12px;
+      font-family:var(--font-body); color:var(--text); width:100%;"
+      onmouseover="this.style.borderColor='var(--accent)'"
+      onmouseout="this.style.borderColor='var(--border)'">
+      <div>
+        <div style="font-size:13px; font-weight:700;">${v.nombre || 'Variante ' + (i+1)}</div>
+        <div style="font-family:var(--font-mono); font-size:12px; color:var(--col-sale); margin-top:2px;">$${fmtN(v.costo || 0)}</div>
+      </div>
+      <div style="font-family:var(--font-mono); font-size:11px; ${stockCls}">${stockLbl}</div>
+    </button>`;
+  }).join('');
+  document.getElementById('variante-overlay').classList.add('show');
+}
+
+function selectVariante(varIdx) {
+  closeVariantePicker();
+  if (_vpItemId !== null && _vpProd) {
+    aplicarVarianteCatalogo(_vpItemId, _vpProd, varIdx);
+  }
+}
+
+function closeVariantePicker() {
+  document.getElementById('variante-overlay').classList.remove('show');
+  _vpItemId = null;
+  _vpProd   = null;
 }
 
 function toast(msg, type) {
