@@ -174,10 +174,11 @@
     <span class="role">Catálogo</span>
   </div>
   <div class="topbar-right">
-    <span id="fb-status">🟡 conectando...</span>
     <button class="btn btn-secondary btn-sm" onclick="openCatManager()">⚙ Categorías</button>
+    <button class="btn btn-secondary btn-sm" onclick="openBulkModal()">⬆ Carga masiva</button>
     <button class="btn btn-primary btn-sm" onclick="openProductForm()">+ Nuevo producto</button>
     <button class="theme-btn" onclick="toggleTheme()" id="theme-btn">☀️ Claro</button>
+    <span id="fb-status">🟡 conectando...</span>
   </div>
 </div>
 
@@ -329,6 +330,45 @@
         <button class="btn btn-primary" onclick="addCategory()">+ Agregar</button>
       </div>
       <div class="cat-list" id="cat-list"></div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ===== MODAL: CARGA MASIVA ===== -->
+<div class="modal-overlay hidden" id="modal-bulk">
+  <div class="modal-box" style="max-width:620px;">
+    <div class="modal-header">
+      <span class="modal-title">⬆ Carga masiva</span>
+      <button class="modal-close" onclick="closeBulkModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div style="font-size:12px; color:var(--muted); line-height:1.8; background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:14px;">
+        <strong style="color:var(--text);">Formato del CSV:</strong> una fila por variante, con estas columnas en orden:<br>
+        <code style="font-family:var(--font-mono); font-size:11px; color:var(--accent);">codigo, nombre, categoria, variante_nombre, variante_costo, variante_stock, ficha, observaciones</code><br><br>
+        Si un producto tiene varias variantes, repetí el código y nombre en cada fila.<br>
+        Las categorías deben coincidir exactamente con las existentes.
+      </div>
+      <div style="display:flex; gap:8px; align-items:center;">
+        <button class="btn btn-secondary btn-sm" onclick="downloadTemplate()">⬇ Descargar plantilla</button>
+        <span style="font-size:11px; color:var(--muted);">o pegá el CSV directamente abajo</span>
+      </div>
+      <div class="form-group">
+        <label>Archivo CSV</label>
+        <input type="file" class="form-control" id="bulk-file-input" accept=".csv" onchange="parseBulkFile(this)">
+      </div>
+      <div class="form-group">
+        <label>O pegá el contenido CSV</label>
+        <textarea class="form-control" id="bulk-csv-text" rows="6" placeholder="codigo,nombre,categoria,variante_nombre,variante_costo,variante_stock,ficha,observaciones&#10;PP001,Bolsa de tela,Bags,Lona,15000,10,,"></textarea>
+      </div>
+      <div id="bulk-preview" style="display:none;">
+        <div style="font-size:10px; font-weight:700; letter-spacing:0.8px; text-transform:uppercase; color:var(--muted); margin-bottom:8px;">Vista previa</div>
+        <div id="bulk-preview-content" style="background:var(--surface2); border:1px solid var(--border); border-radius:6px; padding:12px; font-family:var(--font-mono); font-size:11px; max-height:160px; overflow-y:auto;"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeBulkModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="executeBulkImport()" id="btn-bulk-import" disabled>⬆ Importar productos</button>
     </div>
   </div>
 </div>
@@ -761,17 +801,22 @@ function openDetail(id) {
     : `<div class="detail-img-placeholder">📦</div>`;
 
   // Variants
-  const varHtml = (p.variantes || []).map(v => {
+  const varHtml = (p.variantes || []).map((v, vi) => {
     const st  = parseInt(v.stock) || 0;
     const cls = st === 0 ? 'out' : st <= 5 ? 'low' : 'ok';
-    const lbl = st === 0 ? 'Sin stock' : st + ' unidades';
+    const lbl = st === 0 ? 'Sin stock' : st + ' u.';
     const colors = { ok:'rgba(87,255,143,0.1)', low:'rgba(255,170,51,0.1)', out:'rgba(255,87,87,0.1)' };
     const textColors = { ok:'#57ff8f', low:'var(--warn)', out:'var(--danger)' };
-    return `<div class="detail-variant-row">
+    return `<div class="detail-variant-row" style="grid-template-columns:2fr 1fr auto auto;">
       <div class="detail-variant-name">${v.nombre || 'Variante'}</div>
       <div class="detail-variant-price">${v.costo ? '$' + fmtN(v.costo) : '—'}</div>
-      <div class="detail-variant-stock">
-        <span class="stock-badge" style="background:${colors[cls]}; color:${textColors[cls]}; border:1px solid ${textColors[cls]}33;">${lbl}</span>
+      <div style="display:flex; align-items:center; gap:6px;">
+        <button onclick="adjustStock('${p.id}',${vi},-1)" style="background:rgba(255,87,87,0.12); border:1px solid rgba(255,87,87,0.3); color:var(--danger); border-radius:4px; width:26px; height:26px; font-size:15px; cursor:pointer; display:flex; align-items:center; justify-content:center; line-height:1;">−</button>
+        <span id="stock-val-${vi}" style="font-family:var(--font-mono); font-size:13px; min-width:32px; text-align:center;">${st}</span>
+        <button onclick="adjustStock('${p.id}',${vi},+1)" style="background:rgba(87,255,143,0.08); border:1px solid rgba(87,255,143,0.25); color:#57ff8f; border-radius:4px; width:26px; height:26px; font-size:15px; cursor:pointer; display:flex; align-items:center; justify-content:center; line-height:1;">+</button>
+      </div>
+      <div>
+        <span class="stock-badge" style="background:${colors[cls]}; color:${textColors[cls]}; border:1px solid ${textColors[cls]}33;" id="stock-badge-${vi}">${lbl}</span>
       </div>
     </div>`;
   }).join('');
@@ -786,6 +831,36 @@ function openDetail(id) {
   else obsWrap.style.display='none';
 
   document.getElementById('modal-detail').classList.remove('hidden');
+}
+
+async function adjustStock(productId, variantIdx, delta) {
+  const p = catalogDB[productId];
+  if (!p) return;
+  const variantes = JSON.parse(JSON.stringify(p.variantes || []));
+  const v = variantes[variantIdx];
+  if (!v) return;
+  const newStock = Math.max(0, (parseInt(v.stock) || 0) + delta);
+  variantes[variantIdx].stock = newStock;
+  // Update local display immediately
+  const valEl   = document.getElementById('stock-val-' + variantIdx);
+  const badgeEl = document.getElementById('stock-badge-' + variantIdx);
+  if (valEl) valEl.textContent = newStock;
+  if (badgeEl) {
+    const cls = newStock === 0 ? 'out' : newStock <= 5 ? 'low' : 'ok';
+    const lbl = newStock === 0 ? 'Sin stock' : newStock + ' u.';
+    const colors = { ok:'rgba(87,255,143,0.1)', low:'rgba(255,170,51,0.1)', out:'rgba(255,87,87,0.1)' };
+    const textColors = { ok:'#57ff8f', low:'var(--warn)', out:'var(--danger)' };
+    badgeEl.style.background = colors[cls];
+    badgeEl.style.color = textColors[cls];
+    badgeEl.style.border = '1px solid ' + textColors[cls] + '33';
+    badgeEl.textContent = lbl;
+  }
+  // Save to Firebase
+  try {
+    await window._fbUpdateDoc(window._fbDoc(window._db, 'catalogo', productId), { variantes });
+  } catch(e) {
+    toast('Error al actualizar stock: ' + e.message, 'error');
+  }
 }
 
 function closeDetail() {
@@ -817,6 +892,116 @@ async function deleteCurrentProduct() {
   } catch(e) {
     toast('Error al eliminar: ' + e.message, 'error');
   }
+}
+
+// ============================================================
+// BULK IMPORT
+// ============================================================
+let bulkParsed = [];
+
+function openBulkModal() {
+  bulkParsed = [];
+  document.getElementById('bulk-file-input').value = '';
+  document.getElementById('bulk-csv-text').value = '';
+  document.getElementById('bulk-preview').style.display = 'none';
+  document.getElementById('btn-bulk-import').disabled = true;
+  document.getElementById('modal-bulk').classList.remove('hidden');
+}
+function closeBulkModal() {
+  document.getElementById('modal-bulk').classList.add('hidden');
+}
+
+function downloadTemplate() {
+  const header = 'codigo,nombre,categoria,variante_nombre,variante_costo,variante_stock,ficha,observaciones';
+  const example = 'PP001,Bolsa de tela,Bags,Lona,15000,10,Medida 40x35cm,';
+  const example2 = 'PP001,Bolsa de tela,Bags,Cordura,18000,5,,';
+  const blob = new Blob([header + '\n' + example + '\n' + example2], { type:'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'plantilla_catalogo.csv';
+  a.click();
+}
+
+function parseBulkFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    document.getElementById('bulk-csv-text').value = e.target.result;
+    parseBulkCSV(e.target.result);
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const ta = document.getElementById('bulk-csv-text');
+  if (ta) ta.addEventListener('input', () => parseBulkCSV(ta.value));
+});
+
+function parseBulkCSV(raw) {
+  const lines = raw.trim().split('\n').map(l => l.trim()).filter(l => l);
+  if (lines.length < 2) { bulkParsed = []; showBulkPreview(); return; }
+
+  // Skip header row if it matches expected
+  const start = lines[0].toLowerCase().startsWith('codigo') ? 1 : 0;
+  const rows = lines.slice(start);
+
+  // Group rows by codigo+nombre
+  const map = {};
+  rows.forEach(line => {
+    const cols = line.split(',').map(s => s.trim());
+    const [codigo, nombre, categoria, varNombre, varCosto, varStock, ficha, obs] = cols;
+    if (!nombre) return;
+    const key = (codigo || '') + '|' + nombre;
+    if (!map[key]) {
+      map[key] = { codigo: codigo||'', nombre, categoria: categoria||categorias[0]||'', ficha: ficha||'', obs: obs||'', variantes: [] };
+    }
+    if (varNombre || varCosto) {
+      map[key].variantes.push({ nombre: varNombre||'Variante', costo: parseFloat(varCosto)||0, stock: parseInt(varStock)||0 });
+    }
+  });
+
+  bulkParsed = Object.values(map);
+  showBulkPreview();
+}
+
+function showBulkPreview() {
+  const preview = document.getElementById('bulk-preview');
+  const content = document.getElementById('bulk-preview-content');
+  const btn     = document.getElementById('btn-bulk-import');
+  if (bulkParsed.length === 0) {
+    preview.style.display = 'none';
+    btn.disabled = true;
+    return;
+  }
+  preview.style.display = 'block';
+  btn.disabled = false;
+  btn.textContent = `⬆ Importar ${bulkParsed.length} producto${bulkParsed.length !== 1 ? 's' : ''}`;
+  content.innerHTML = bulkParsed.map(p =>
+    `<div style="margin-bottom:6px; color:var(--text);">
+      <strong>${p.codigo ? '['+p.codigo+'] ' : ''}${p.nombre}</strong>
+      <span style="color:var(--muted);"> · ${p.categoria}</span>
+      ${p.variantes.map(v => `<span style="color:var(--accent); margin-left:8px;">${v.nombre} $${fmtN(v.costo)} (${v.stock}u)</span>`).join('')}
+    </div>`
+  ).join('');
+}
+
+async function executeBulkImport() {
+  if (bulkParsed.length === 0) return;
+  const btn = document.getElementById('btn-bulk-import');
+  btn.disabled = true;
+  btn.textContent = '⏳ Importando...';
+  let ok = 0, err = 0;
+  for (const p of bulkParsed) {
+    try {
+      const data = { ...p, fotoUrl:'', updatedAt: new Date().toISOString(), createdAt: new Date().toISOString() };
+      await window._fbAddDoc(window._fbCollection(window._db, 'catalogo'), data);
+      ok++;
+    } catch(e) { err++; console.error(e); }
+  }
+  closeBulkModal();
+  if (err === 0) toast(`✓ ${ok} producto${ok !== 1 ? 's' : ''} importado${ok !== 1 ? 's' : ''} correctamente`, 'success');
+  else toast(`Importados ${ok}, errores: ${err}`, 'error');
 }
 
 // ============================================================
