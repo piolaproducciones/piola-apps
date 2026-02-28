@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Cotizador Piola</title>
-<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,700;0,800;1,700;1,800&family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root {
     --bg: #0c0c0f;
@@ -24,7 +24,7 @@
     --col-sale: #e8c800;
     --font-body: 'Syne', sans-serif;
     --font-mono: 'DM Mono', monospace;
-    --font-display: 'Barlow Condensed', sans-serif;
+    --font-display: 'DM Serif Display', serif;
   }
 
   :root[data-theme="light"] {
@@ -692,8 +692,9 @@
               <th>Cant. Cliente</th>
               <th title="Unidades extra internas (ocultas al cliente)">Extra ±</th>
               <th>Costo Unit.</th>
-              <th class="calc" style="color:var(--col-cost)">Depósito %</th>
+              <th class="calc" style="color:var(--col-cost); display:none;">Depósito %</th>
               <th>Cant. Log.</th>
+              <th class="calc" style="color:var(--col-cost)" title="Costo total de logística para este item">Log. $</th>
               <th class="calc" style="color:var(--col-cost)" title="Costo total incluyendo logística y depósito">C.Total</th>
               <th class="calc" style="color:var(--col-sale)">Margen %</th>
               <th class="calc" style="color:var(--col-sale)">Venta Unit.</th>
@@ -881,7 +882,7 @@
 // FIREBASE CONFIG
 // ============================================================
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import { getFirestore, collection, doc, getDocs, addDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy, runTransaction } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import { getFirestore, collection, doc, getDocs, addDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
 const firebaseConfig = {
   apiKey: "AIzaSyAQNT8-8Q5v7Tfn9MIy530RSHdZj6Am390",
@@ -905,7 +906,6 @@ window._fbDeleteDoc = deleteDoc;
 window._fbOnSnapshot= onSnapshot;
 window._fbQuery     = query;
 window._fbOrderBy   = orderBy;
-window._fbRunTransaction = runTransaction;
 
 // Iniciar listener de cotizaciones en tiempo real
 window.addEventListener('load', () => {
@@ -915,12 +915,6 @@ window.addEventListener('load', () => {
       window._quotesDB = {};
       snap.forEach(d => window._quotesDB[d.id] = { firebaseId: d.id, ...d.data() });
       if (typeof renderHistorial === 'function') renderHistorial();
-      // Detectar si venimos de historial con una cotización para editar
-      const editId = localStorage.getItem('piola-edit-id');
-      if (editId && window._quotesDB[editId]) {
-        localStorage.removeItem('piola-edit-id');
-        loadQuote(editId);
-      }
     },
     err => console.error('Error cotizaciones:', err)
   );
@@ -955,7 +949,7 @@ let materialesDB = [];
 window.onload = async () => {
   const today = new Date().toISOString().split('T')[0];
   document.getElementById('f-fecha').value = today;
-  document.getElementById('display-id').textContent = 'COT-????';
+  document.getElementById('display-id').textContent = 'COT-' + String(quoteCounter).padStart(4,'0');
   buildCFTGrid();
   buildDatalist();
   addRow();
@@ -1137,8 +1131,9 @@ function renderTable() {
           <input type="number" value="${item.costoUnit}" min="0" step="100" style="padding-left:18px;" onchange="updateItem(${item.id},'costoUnit',parseFloat(this.value)||0)">
         </div>
       </td>
-      <td class="calc-cell cost" style="font-family:var(--font-mono); font-size:12px;">$${fmtN(calc.depo)}</td>
+      <td class="calc-cell cost" style="font-family:var(--font-mono); font-size:12px; display:none;">$${fmtN(calc.depo)}</td>
       <td style="width:70px;" title="Cantidad de envíos de logística"><input type="number" value="${item.cantLog}" min="0" step="1" onchange="updateItem(${item.id},'cantLog',parseFloat(this.value)||0)"></td>
+      <td class="calc-cell cost" style="font-family:var(--font-mono); font-size:12px;" title="Logística total (${item.cantLog} envíos × base)">$${fmtN(calc.logistica)}</td>
       <td class="calc-cell cost" title="Costo Total = (Costo + Logística + Depósito) × Cant.Log.">$${fmtN(calc.costoTotalFinal)}</td>
       <td style="width:70px;">
         <div style="position:relative;">
@@ -1450,12 +1445,11 @@ function buildPDF() {
   const rows = items.map((item, idx) => {
     const c = calcItem(item, globals);
     totalSinIVA += c.ventaFinal;
-    const unitSinIVA = item.qc > 0 ? c.ventaFinal / item.qc : 0;
     return `<tr>
       <td>${idx+1}</td>
       <td><strong>${item.desc || '—'}</strong>${item.proveedor ? '<br><span style="font-size:11px;color:#888">'+item.proveedor+'</span>' : ''}</td>
       <td style="text-align:center;">${item.qc}</td>
-      <td style="text-align:right; font-family:monospace;">$${fmtN(unitSinIVA)}</td>
+      <td style="text-align:right; font-family:monospace;">$${fmtN(c.ventaUnit)}</td>
       <td style="text-align:right; font-family:monospace; font-weight:bold;">$${fmtN(c.ventaFinal)}</td>
     </tr>`;
   }).join('');
@@ -1556,28 +1550,18 @@ async function saveQuote() {
 
   try {
     if (currentFirebaseId) {
-      // Edición — actualizar el documento existente
+      // Ya existe — actualizar el documento existente
       await window._fbUpdateDoc(window._fbDoc(window._db, 'cotizaciones', currentFirebaseId), quote);
       toast('✓ Cotización actualizada en la nube', 'success');
     } else {
-      // Nueva cotización — obtener número atómico desde Firebase
-      const counterRef = window._fbDoc(window._db, 'config', 'counter');
-      let newNumber;
-      await window._fbRunTransaction(window._db, async (transaction) => {
-        const counterDoc = await transaction.get(counterRef);
-        if (!counterDoc.exists()) {
-          newNumber = 1;
-          transaction.set(counterRef, { value: 2 });
-        } else {
-          newNumber = (counterDoc.data().value || 1);
-          transaction.update(counterRef, { value: newNumber + 1 });
-        }
-      });
-      quote.id     = 'COT-' + String(newNumber).padStart(4, '0');
+      // Nueva cotización
+      quote.id     = 'COT-' + String(quoteCounter).padStart(4, '0');
       quote.estado = 'borrador';
       const ref = await window._fbAddDoc(window._fbCollection(window._db, 'cotizaciones'), quote);
       currentFirebaseId = ref.id;
-      document.getElementById('display-id').textContent = quote.id;
+      quoteCounter++;
+      localStorage.setItem('piola-counter', quoteCounter);
+      document.getElementById('display-id').textContent = 'COT-' + String(quoteCounter).padStart(4,'0');
       toast('✓ Cotización ' + quote.id + ' guardada en la nube', 'success');
     }
   } catch(e) {
@@ -1688,7 +1672,7 @@ function nuevaCotizacion() {
   document.getElementById('f-cliente').value  = '';
   document.getElementById('f-proyecto').value = '';
   document.getElementById('f-vendedor').value = '';
-  document.getElementById('display-id').textContent = 'COT-????';
+  document.getElementById('display-id').textContent = 'COT-' + String(quoteCounter).padStart(4,'0');
   recalcAll();
   toast('Nueva cotización lista', '');
 }
