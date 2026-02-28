@@ -1199,7 +1199,7 @@ function renderTable() {
           onchange="updateItem(${item.id},'desc',this.value); autocompletarProducto(${item.id}, this.value)"
           onblur="autocompletarProducto(${item.id}, this.value)">
       </td>
-      <td style="width:70px;"><input type="number" value="${item.qc}" min="1" onchange="updateItem(${item.id},'qc',parseFloat(this.value)||1)"></td>
+      <td style="width:70px;"><input type="number" value="${item.qc}" min="1" ${item._stockDisponible !== undefined ? 'max="'+item._stockDisponible+'"' : ''} onchange="updateItem(${item.id},'qc',parseFloat(this.value)||1)"></td>
       <td style="width:60px;" title="Unidades extra internas, no visibles al cliente"><input type="number" value="${item.extra}" min="0" step="1" style="color:var(--warn);" onchange="updateItem(${item.id},'extra',parseFloat(this.value)||0)"></td>
       <td style="min-width:90px;">
         <input type="number" value="${item.costoUnit}" min="0" step="100" onchange="updateItem(${item.id},'costoUnit',parseFloat(this.value)||0)">
@@ -1223,7 +1223,16 @@ function renderTable() {
 
 function updateItem(id, field, val) {
   const item = items.find(i => i.id === id);
-  if (item) { item[field] = val; recalcAll(); }
+  if (!item) return;
+  if (field === 'qc' && item._stockDisponible !== undefined) {
+    const stock = item._stockDisponible;
+    if (val > stock) {
+      toast(`Stock insuficiente: hay ${stock} u. disponibles de este producto. Consultá con depósito si necesitás más.`, 'error');
+      val = stock;
+    }
+  }
+  item[field] = val;
+  recalcAll();
 }
 
 // Actualiza el dato sin rerenderizar (para no perder el foco mientras se escribe)
@@ -1372,20 +1381,23 @@ function aplicarVarianteCatalogo(itemId, prod, varIdx) {
   const v = prod.variantes[varIdx];
   if (!v) return;
 
-  // Stock check — warn but don't block
   const stock = parseInt(v.stock) || 0;
+
+  // Block if no stock
   if (stock === 0) {
-    toast(`⚠ Sin stock disponible de "${v.nombre}". Consultá con depósito antes de cotizar.`, 'error');
-  } else if (stock < item.qc) {
-    toast(`⚠ Stock insuficiente: hay ${stock} u. de "${v.nombre}". Consultá con depósito.`, 'error');
+    toast(`Sin stock disponible de "${prod.nombre} — ${v.nombre}". No se puede cotizar este producto.`, 'error');
+    // Clear the desc field back
+    item.desc = '';
+    recalcAll();
+    return;
   }
 
   item.costoUnit = v.costo || 0;
-  item.proveedor = prod.nombre + (prod.codigo ? ' [' + prod.codigo + ']' : '');
   item.desc = prod.nombre + ' — ' + v.nombre;
   item.receta = null;
   item._catalogoId = prod.id;
   item._varianteIdx = varIdx;
+  item._stockDisponible = stock;
   recalcAll();
 }
 
