@@ -345,7 +345,7 @@
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
 import { getFirestore, collection, doc, getDocs, addDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy, setDoc, getDoc } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
-import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js';
+// Storage no usado — fotos en base64 en Firestore
 
 const firebaseConfig = {
   apiKey: "AIzaSyAQNT8-8Q5v7Tfn9MIy530RSHdZj6Am390",
@@ -358,14 +358,7 @@ const firebaseConfig = {
 
 const app  = initializeApp(firebaseConfig);
 const db   = getFirestore(app);
-const storage = getStorage(app);
-
 window._db  = db;
-window._storage = storage;
-window._fbRef = ref;
-window._fbUploadBytes = uploadBytes;
-window._fbGetDownloadURL = getDownloadURL;
-window._fbDeleteObject = deleteObject;
 window._fbCollection = collection;
 window._fbDoc = doc;
 window._fbAddDoc = addDoc;
@@ -626,9 +619,20 @@ function handlePhotoSelect(input) {
   pendingPhotoFile = file;
   const reader = new FileReader();
   reader.onload = e => {
-    pendingPhotoBase64 = e.target.result;
-    document.getElementById('photo-preview-wrap').innerHTML =
-      `<img src="${e.target.result}" style="width:100%; max-height:140px; object-fit:contain; border-radius:6px;">`;
+    // Resize to max 800px wide to keep size manageable
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const MAX = 800;
+      let w = img.width, h = img.height;
+      if (w > MAX) { h = Math.round(h * MAX / w); w = MAX; }
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      pendingPhotoBase64 = canvas.toDataURL('image/jpeg', 0.82);
+      document.getElementById('photo-preview-wrap').innerHTML =
+        `<img src="${pendingPhotoBase64}" style="width:100%; max-height:140px; object-fit:contain; border-radius:6px;">`;
+    };
+    img.src = e.target.result;
   };
   reader.readAsDataURL(file);
 }
@@ -712,13 +716,10 @@ async function saveProduct() {
   btn.textContent = '⏳ Guardando...';
 
   try {
+    // Usar base64 si hay foto nueva, sino mantener la existente
     let fotoUrl = editingId ? (catalogDB[editingId]?.fotoUrl || '') : '';
-
-    // Upload photo if new one selected
-    if (pendingPhotoFile) {
-      const storageRef = window._fbRef(window._storage, `catalogo/${Date.now()}_${pendingPhotoFile.name}`);
-      const snap = await window._fbUploadBytes(storageRef, pendingPhotoFile);
-      fotoUrl = await window._fbGetDownloadURL(snap.ref);
+    if (pendingPhotoBase64) {
+      fotoUrl = pendingPhotoBase64;
     }
 
     const data = { nombre, codigo, categoria, ficha, obs, fecha, variantes, fotoUrl, updatedAt: new Date().toISOString() };
