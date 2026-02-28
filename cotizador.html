@@ -544,6 +544,7 @@
     body { background: #fff; }
     .topbar, .tabs, .global-vars, .panel:not(.pdf-panel) { display: none; }
     .pdf-preview { box-shadow: none; }
+    .no-print { display: none !important; }
   }
 </style>
 </head>
@@ -692,9 +693,8 @@
               <th>Cant. Cliente</th>
               <th title="Unidades extra internas (ocultas al cliente)">Extra ±</th>
               <th>Costo Unit.</th>
-              <th class="calc" style="color:var(--col-cost); display:none;">Depósito %</th>
+              <th class="calc" style="color:var(--col-cost)">Depósito %</th>
               <th>Cant. Log.</th>
-              <th class="calc" style="color:var(--col-cost)" title="Costo total de logística para este item">Log. $</th>
               <th class="calc" style="color:var(--col-cost)" title="Costo total incluyendo logística y depósito">C.Total</th>
               <th class="calc" style="color:var(--col-sale)">Margen %</th>
               <th class="calc" style="color:var(--col-sale)">Venta Unit.</th>
@@ -862,8 +862,14 @@
 
 <!-- ===================== PDF VIEW ===================== -->
 <div class="view" id="view-pdf">
-  <div style="display:flex; gap:10px; justify-content:flex-end; margin-bottom:16px;">
+  <div style="display:flex; gap:10px; justify-content:flex-end; align-items:center; margin-bottom:16px; flex-wrap:wrap;">
     <button class="btn btn-secondary" onclick="showView('editor', document.querySelector('.tab'))">← Volver</button>
+    <!-- Zona de imágenes -->
+    <label for="pdf-img-input" style="display:inline-flex; align-items:center; gap:6px; background:var(--surface2); border:1px solid var(--border); color:var(--muted); border-radius:6px; padding:8px 14px; font-family:var(--font-body); font-size:12px; font-weight:600; cursor:pointer; transition:all 0.2s;" onmouseover="this.style.borderColor='var(--accent)'; this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'; this.style.color='var(--muted)'">
+      🖼 Agregar imágenes
+    </label>
+    <input type="file" id="pdf-img-input" accept="image/*" multiple style="display:none;" onchange="addPdfImages(this)">
+    <button class="btn btn-secondary" onclick="clearPdfImages()" id="btn-clear-imgs" style="display:none;">✕ Quitar imágenes</button>
     <button class="btn btn-primary" onclick="window.print()">🖨 Imprimir / Guardar PDF</button>
   </div>
   <div class="pdf-preview" id="pdf-content"></div>
@@ -1131,9 +1137,8 @@ function renderTable() {
           <input type="number" value="${item.costoUnit}" min="0" step="100" style="padding-left:18px;" onchange="updateItem(${item.id},'costoUnit',parseFloat(this.value)||0)">
         </div>
       </td>
-      <td class="calc-cell cost" style="font-family:var(--font-mono); font-size:12px; display:none;">$${fmtN(calc.depo)}</td>
+      <td class="calc-cell cost" style="font-family:var(--font-mono); font-size:12px;">$${fmtN(calc.depo)}</td>
       <td style="width:70px;" title="Cantidad de envíos de logística"><input type="number" value="${item.cantLog}" min="0" step="1" onchange="updateItem(${item.id},'cantLog',parseFloat(this.value)||0)"></td>
-      <td class="calc-cell cost" style="font-family:var(--font-mono); font-size:12px;" title="Logística total (${item.cantLog} envíos × base)">$${fmtN(calc.logistica)}</td>
       <td class="calc-cell cost" title="Costo Total = (Costo + Logística + Depósito) × Cant.Log.">$${fmtN(calc.costoTotalFinal)}</td>
       <td style="width:70px;">
         <div style="position:relative;">
@@ -1445,11 +1450,12 @@ function buildPDF() {
   const rows = items.map((item, idx) => {
     const c = calcItem(item, globals);
     totalSinIVA += c.ventaFinal;
+    const unitSinIVA = item.qc > 0 ? c.ventaFinal / item.qc : 0;
     return `<tr>
       <td>${idx+1}</td>
       <td><strong>${item.desc || '—'}</strong>${item.proveedor ? '<br><span style="font-size:11px;color:#888">'+item.proveedor+'</span>' : ''}</td>
       <td style="text-align:center;">${item.qc}</td>
-      <td style="text-align:right; font-family:monospace;">$${fmtN(c.ventaUnit)}</td>
+      <td style="text-align:right; font-family:monospace;">$${fmtN(unitSinIVA)}</td>
       <td style="text-align:right; font-family:monospace; font-weight:bold;">$${fmtN(c.ventaFinal)}</td>
     </tr>`;
   }).join('');
@@ -1504,6 +1510,75 @@ function buildPDF() {
     </div>
     <p style="font-size:10px; color:#aaa; margin-top:20px; text-align:center;">Propuesta generada por Sistema Cotizador · Piola 2025</p>
   `;
+  // Insertar galería si hay imágenes cargadas
+  renderPdfImages();
+}
+
+// ============================================================
+// PDF IMAGES
+// ============================================================
+let pdfImages = []; // array de base64 strings
+
+function addPdfImages(input) {
+  const files = Array.from(input.files);
+  let loaded = 0;
+  files.forEach(file => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      pdfImages.push(e.target.result);
+      loaded++;
+      if (loaded === files.length) {
+        input.value = ''; // reset input para poder agregar más
+        document.getElementById('btn-clear-imgs').style.display = 'inline-flex';
+        renderPdfImages();
+      }
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function clearPdfImages() {
+  pdfImages = [];
+  document.getElementById('btn-clear-imgs').style.display = 'none';
+  renderPdfImages();
+}
+
+function renderPdfImages() {
+  const content = document.getElementById('pdf-content');
+  if (!content) return;
+  // Remover galería anterior si existe
+  const existing = document.getElementById('pdf-gallery');
+  if (existing) existing.remove();
+  if (pdfImages.length === 0) return;
+
+  // Calcular columnas según cantidad de imágenes
+  const cols = pdfImages.length === 1 ? 1 : pdfImages.length === 2 ? 2 : pdfImages.length <= 4 ? 2 : 3;
+
+  const gallery = document.createElement('div');
+  gallery.id = 'pdf-gallery';
+  gallery.style.cssText = `
+    margin-top: 28px;
+    padding-top: 20px;
+    border-top: 2px solid #e8c800;
+  `;
+  gallery.innerHTML = `
+    <div style="font-size:13px; font-weight:700; margin-bottom:14px; text-transform:uppercase; letter-spacing:0.5px; color:#111;">Referencias Visuales</div>
+    <div style="display:grid; grid-template-columns:repeat(${cols}, 1fr); gap:12px;">
+      ${pdfImages.map((src, i) => `
+        <div style="position:relative;">
+          <img src="${src}" alt="Imagen ${i+1}" style="width:100%; height:200px; object-fit:cover; border-radius:6px; border:1px solid #eee; display:block;">
+          <button onclick="removePdfImage(${i})" class="no-print" style="position:absolute; top:6px; right:6px; background:rgba(0,0,0,0.6); border:none; color:white; border-radius:50%; width:22px; height:22px; font-size:13px; cursor:pointer; line-height:1; display:flex; align-items:center; justify-content:center;">×</button>
+        </div>
+      `).join('')}
+    </div>
+  `;
+  content.appendChild(gallery);
+}
+
+function removePdfImage(idx) {
+  pdfImages.splice(idx, 1);
+  if (pdfImages.length === 0) document.getElementById('btn-clear-imgs').style.display = 'none';
+  renderPdfImages();
 }
 
 // ============================================================
