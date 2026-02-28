@@ -915,6 +915,12 @@ window.addEventListener('load', () => {
       window._quotesDB = {};
       snap.forEach(d => window._quotesDB[d.id] = { firebaseId: d.id, ...d.data() });
       if (typeof renderHistorial === 'function') renderHistorial();
+      // Detectar si venimos de historial con una cotización para editar
+      const editId = localStorage.getItem('piola-edit-id');
+      if (editId && window._quotesDB[editId]) {
+        localStorage.removeItem('piola-edit-id');
+        loadQuote(editId);
+      }
     },
     err => console.error('Error cotizaciones:', err)
   );
