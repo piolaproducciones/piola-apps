@@ -344,22 +344,23 @@
     </div>
     <div class="modal-body">
       <div style="font-size:12px; color:var(--muted); line-height:1.8; background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:14px;">
-        <strong style="color:var(--text);">Formato del CSV:</strong> una fila por variante, con estas columnas en orden:<br>
-        <code style="font-family:var(--font-mono); font-size:11px; color:var(--accent);">codigo, nombre, categoria, variante_nombre, variante_costo, variante_stock, ficha, observaciones</code><br><br>
-        Si un producto tiene varias variantes, repetí el código y nombre en cada fila.<br>
-        Las categorías deben coincidir exactamente con las existentes.
+        <strong style="color:var(--text);">Formato por columnas (Excel / Google Sheets):</strong> una fila por variante, con estas columnas:<br>
+        <code style="font-family:var(--font-mono); font-size:11px; color:var(--accent);">codigo · nombre · categoria · variante_nombre · variante_costo · variante_stock · ficha · observaciones</code><br><br>
+        • Si un producto tiene varias variantes, repetí el código y nombre en cada fila.<br>
+        • Si el código ya existe, <strong style="color:var(--accent);">el producto se actualiza</strong> con los nuevos datos.<br>
+        • Podés copiar y pegar directo desde Excel o Google Sheets.
       </div>
       <div style="display:flex; gap:8px; align-items:center;">
-        <button class="btn btn-secondary btn-sm" onclick="downloadTemplate()">⬇ Descargar plantilla</button>
-        <span style="font-size:11px; color:var(--muted);">o pegá el CSV directamente abajo</span>
+        <button class="btn btn-secondary btn-sm" onclick="downloadTemplate()">⬇ Descargar plantilla Excel</button>
+        <span style="font-size:11px; color:var(--muted);">o pegá las columnas directamente abajo</span>
       </div>
       <div class="form-group">
-        <label>Archivo CSV</label>
-        <input type="file" class="form-control" id="bulk-file-input" accept=".csv" onchange="parseBulkFile(this)">
+        <label>Archivo (CSV o TSV — exportado desde Excel/Sheets)</label>
+        <input type="file" class="form-control" id="bulk-file-input" accept=".csv,.tsv,.txt" onchange="parseBulkFile(this)">
       </div>
       <div class="form-group">
-        <label>O pegá el contenido CSV</label>
-        <textarea class="form-control" id="bulk-csv-text" rows="6" placeholder="codigo,nombre,categoria,variante_nombre,variante_costo,variante_stock,ficha,observaciones&#10;PP001,Bolsa de tela,Bags,Lona,15000,10,,"></textarea>
+        <label>O pegá directamente desde Excel / Google Sheets</label>
+        <textarea class="form-control" id="bulk-csv-text" rows="6" placeholder="Copiá las celdas de tu planilla y pegá acá (Tab entre columnas, Enter entre filas)"></textarea>
       </div>
       <div id="bulk-preview" style="display:none;">
         <div style="font-size:10px; font-weight:700; letter-spacing:0.8px; text-transform:uppercase; color:var(--muted); margin-bottom:8px;">Vista previa</div>
@@ -870,8 +871,9 @@ function closeDetail() {
 
 function editCurrentProduct() {
   if (!detailId) return;
+  const idToEdit = detailId;
   closeDetail();
-  openProductForm(detailId);
+  openProductForm(idToEdit);
 }
 
 async function deleteCurrentProduct() {
@@ -912,13 +914,15 @@ function closeBulkModal() {
 }
 
 function downloadTemplate() {
-  const header = 'codigo,nombre,categoria,variante_nombre,variante_costo,variante_stock,ficha,observaciones';
-  const example = 'PP001,Bolsa de tela,Bags,Lona,15000,10,Medida 40x35cm,';
-  const example2 = 'PP001,Bolsa de tela,Bags,Cordura,18000,5,,';
-  const blob = new Blob([header + '\n' + example + '\n' + example2], { type:'text/csv' });
+  const sep = '\t';
+  const header = ['codigo','nombre','categoria','variante_nombre','variante_costo','variante_stock','ficha','observaciones'].join(sep);
+  const ex1 = ['PP001','Bolsa de tela','Bags','Lona','15000','10','Medida 40x35cm',''].join(sep);
+  const ex2 = ['PP001','Bolsa de tela','Bags','Cordura','18000','5','',''].join(sep);
+  const ex3 = ['PP002','Antifaz','Accesorios','Standard','5000','20','','En depósito principal'].join(sep);
+  const blob = new Blob([header + '\n' + ex1 + '\n' + ex2 + '\n' + ex3], { type:'text/tab-separated-values' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = 'plantilla_catalogo.csv';
+  a.download = 'plantilla_catalogo.tsv';
   a.click();
 }
 
@@ -939,26 +943,34 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function parseBulkCSV(raw) {
-  const lines = raw.trim().split('\n').map(l => l.trim()).filter(l => l);
-  if (lines.length < 2) { bulkParsed = []; showBulkPreview(); return; }
+  const lines = raw.trim().split('\n').map(l => l.trimEnd()).filter(l => l);
+  if (lines.length < 1) { bulkParsed = []; showBulkPreview(); return; }
 
-  // Skip header row if it matches expected
-  const start = lines[0].toLowerCase().startsWith('codigo') ? 1 : 0;
+  // Auto-detect separator: tab (from Excel/Sheets) or comma
+  const sep = lines[0].includes('\t') ? '\t' : ',';
+
+  // Skip header row if first col looks like a header
+  const firstCol = lines[0].split(sep)[0].trim().toLowerCase();
+  const start = (firstCol === 'codigo' || firstCol === 'código') ? 1 : 0;
   const rows = lines.slice(start);
+  if (rows.length === 0) { bulkParsed = []; showBulkPreview(); return; }
 
-  // Group rows by codigo+nombre
+  // Group rows by codigo (primary key for upsert)
   const map = {};
   rows.forEach(line => {
-    const cols = line.split(',').map(s => s.trim());
+    const cols = line.split(sep).map(s => s.trim());
     const [codigo, nombre, categoria, varNombre, varCosto, varStock, ficha, obs] = cols;
     if (!nombre) return;
-    const key = (codigo || '') + '|' + nombre;
+    const key = codigo || nombre; // use codigo as key if present
     if (!map[key]) {
-      map[key] = { codigo: codigo||'', nombre, categoria: categoria||categorias[0]||'', ficha: ficha||'', obs: obs||'', variantes: [] };
+      map[key] = { codigo: codigo||'', nombre, categoria: categoria||categorias[0]||'', ficha: ficha||'', obs: obs||'', variantes: [], _key: key };
     }
     if (varNombre || varCosto) {
-      map[key].variantes.push({ nombre: varNombre||'Variante', costo: parseFloat(varCosto)||0, stock: parseInt(varStock)||0 });
+      map[key].variantes.push({ nombre: varNombre||'Variante', costo: parseFloat((varCosto||'0').replace(/[.$]/g,'').replace(',','.')) ||0, stock: parseInt(varStock)||0 });
     }
+    // Update ficha/obs if provided in later rows
+    if (ficha) map[key].ficha = ficha;
+    if (obs)   map[key].obs   = obs;
   });
 
   bulkParsed = Object.values(map);
@@ -977,13 +989,21 @@ function showBulkPreview() {
   preview.style.display = 'block';
   btn.disabled = false;
   btn.textContent = `⬆ Importar ${bulkParsed.length} producto${bulkParsed.length !== 1 ? 's' : ''}`;
-  content.innerHTML = bulkParsed.map(p =>
-    `<div style="margin-bottom:6px; color:var(--text);">
-      <strong>${p.codigo ? '['+p.codigo+'] ' : ''}${p.nombre}</strong>
+  // Check which ones already exist (by codigo)
+  const existingCodigos = {};
+  Object.values(catalogDB).forEach(p => { if(p.codigo) existingCodigos[p.codigo] = p.id; });
+
+  content.innerHTML = bulkParsed.map(p => {
+    const isUpdate = p.codigo && existingCodigos[p.codigo];
+    const tag = isUpdate
+      ? `<span style="background:rgba(232,200,0,0.15); color:var(--accent); border:1px solid rgba(232,200,0,0.3); border-radius:4px; padding:1px 6px; font-size:10px; margin-left:6px;">ACTUALIZAR</span>`
+      : `<span style="background:rgba(87,255,143,0.1); color:#57ff8f; border:1px solid rgba(87,255,143,0.25); border-radius:4px; padding:1px 6px; font-size:10px; margin-left:6px;">NUEVO</span>`;
+    return `<div style="margin-bottom:6px; color:var(--text);">
+      <strong>${p.codigo ? '['+p.codigo+'] ' : ''}${p.nombre}</strong>${tag}
       <span style="color:var(--muted);"> · ${p.categoria}</span>
       ${p.variantes.map(v => `<span style="color:var(--accent); margin-left:8px;">${v.nombre} $${fmtN(v.costo)} (${v.stock}u)</span>`).join('')}
-    </div>`
-  ).join('');
+    </div>`;
+  }).join('');
 }
 
 async function executeBulkImport() {
@@ -991,17 +1011,39 @@ async function executeBulkImport() {
   const btn = document.getElementById('btn-bulk-import');
   btn.disabled = true;
   btn.textContent = '⏳ Importando...';
-  let ok = 0, err = 0;
+
+  // Build lookup: codigo → firebaseId
+  const existingCodigos = {};
+  Object.values(catalogDB).forEach(p => { if(p.codigo) existingCodigos[p.codigo] = p.id; });
+
+  let created = 0, updated = 0, err = 0;
   for (const p of bulkParsed) {
     try {
-      const data = { ...p, fotoUrl:'', updatedAt: new Date().toISOString(), createdAt: new Date().toISOString() };
-      await window._fbAddDoc(window._fbCollection(window._db, 'catalogo'), data);
-      ok++;
+      const { _key, ...data } = p;
+      data.updatedAt = new Date().toISOString();
+      const existingId = p.codigo ? existingCodigos[p.codigo] : null;
+      if (existingId) {
+        // Update — preserve foto
+        const existing = catalogDB[existingId];
+        data.fotoUrl = existing.fotoUrl || '';
+        data.createdAt = existing.createdAt || data.updatedAt;
+        await window._fbUpdateDoc(window._fbDoc(window._db, 'catalogo', existingId), data);
+        updated++;
+      } else {
+        data.fotoUrl = '';
+        data.createdAt = data.updatedAt;
+        await window._fbAddDoc(window._fbCollection(window._db, 'catalogo'), data);
+        created++;
+      }
     } catch(e) { err++; console.error(e); }
   }
   closeBulkModal();
-  if (err === 0) toast(`✓ ${ok} producto${ok !== 1 ? 's' : ''} importado${ok !== 1 ? 's' : ''} correctamente`, 'success');
-  else toast(`Importados ${ok}, errores: ${err}`, 'error');
+  const msg = [
+    created > 0 ? `${created} creado${created!==1?'s':''}` : '',
+    updated > 0 ? `${updated} actualizado${updated!==1?'s':''}` : '',
+    err > 0     ? `${err} error${err!==1?'es':''}` : ''
+  ].filter(Boolean).join(', ');
+  toast(`✓ ${msg}`, err > 0 ? 'error' : 'success');
 }
 
 // ============================================================
