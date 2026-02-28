@@ -580,6 +580,7 @@
     .topbar, .tabs, .global-vars, .panel:not(.pdf-panel) { display: none; }
     .pdf-preview { box-shadow: none; }
     .no-print { display: none !important; }
+    .no-print { display: none !important; }
   }
 </style>
 </head>
@@ -929,7 +930,7 @@
 // FIREBASE CONFIG
 // ============================================================
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import { getFirestore, collection, doc, getDocs, addDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import { getFirestore, collection, doc, getDocs, addDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy, runTransaction } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
 const firebaseConfig = {
   apiKey: "AIzaSyAQNT8-8Q5v7Tfn9MIy530RSHdZj6Am390",
@@ -953,6 +954,7 @@ window._fbDeleteDoc = deleteDoc;
 window._fbOnSnapshot= onSnapshot;
 window._fbQuery     = query;
 window._fbOrderBy   = orderBy;
+window._fbRunTransaction = runTransaction;
 
 // Iniciar listener de cotizaciones en tiempo real
 window.addEventListener('load', () => {
@@ -962,6 +964,11 @@ window.addEventListener('load', () => {
       window._quotesDB = {};
       snap.forEach(d => window._quotesDB[d.id] = { firebaseId: d.id, ...d.data() });
       if (typeof renderHistorial === 'function') renderHistorial();
+      const editId = localStorage.getItem('piola-edit-id');
+      if (editId && window._quotesDB[editId]) {
+        localStorage.removeItem('piola-edit-id');
+        loadQuote(editId);
+      }
       // Detectar si venimos de historial con una cotización para editar
       const editId = localStorage.getItem('piola-edit-id');
       if (editId && window._quotesDB[editId]) {
@@ -1002,7 +1009,7 @@ let materialesDB = [];
 window.onload = async () => {
   const today = new Date().toISOString().split('T')[0];
   document.getElementById('f-fecha').value = today;
-  document.getElementById('display-id').textContent = 'COT-' + String(quoteCounter).padStart(4,'0');
+  document.getElementById('display-id').textContent = 'COT-????';
   buildCFTGrid();
   buildDatalist();
   addRow();
@@ -1629,6 +1636,65 @@ function removePdfImage(idx) {
 }
 
 // ============================================================
+// PDF IMAGES
+// ============================================================
+let pdfImages = [];
+
+function addPdfImages(input) {
+  const files = Array.from(input.files);
+  let loaded = 0;
+  files.forEach(file => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      pdfImages.push(e.target.result);
+      loaded++;
+      if (loaded === files.length) {
+        input.value = '';
+        document.getElementById('btn-clear-imgs').style.display = 'inline-flex';
+        renderPdfImages();
+      }
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function clearPdfImages() {
+  pdfImages = [];
+  document.getElementById('btn-clear-imgs').style.display = 'none';
+  renderPdfImages();
+}
+
+function renderPdfImages() {
+  const content = document.getElementById('pdf-content');
+  if (!content) return;
+  const existing = document.getElementById('pdf-gallery');
+  if (existing) existing.remove();
+  if (pdfImages.length === 0) return;
+  const cols = pdfImages.length === 1 ? 1 : pdfImages.length === 2 ? 2 : pdfImages.length <= 4 ? 2 : 3;
+  const gallery = document.createElement('div');
+  gallery.id = 'pdf-gallery';
+  gallery.style.cssText = 'margin-top:28px; padding-top:20px; border-top:2px solid #e8c800;';
+  gallery.innerHTML = `
+    <div style="font-size:13px; font-weight:700; margin-bottom:14px; text-transform:uppercase; letter-spacing:0.5px; color:#111;">Referencias Visuales</div>
+    <div style="display:grid; grid-template-columns:repeat(${cols}, 1fr); gap:12px;">
+      ${pdfImages.map((src, i) => `
+        <div style="position:relative;">
+          <img src="${src}" alt="Imagen ${i+1}" style="width:100%; height:220px; object-fit:contain; border-radius:6px; border:1px solid #eee; display:block; background:#f9f9f9;">
+          <button onclick="removePdfImage(${i})" class="no-print" style="position:absolute; top:6px; right:6px; background:rgba(0,0,0,0.6); border:none; color:white; border-radius:50%; width:22px; height:22px; font-size:13px; cursor:pointer; display:flex; align-items:center; justify-content:center;">×</button>
+        </div>
+      `).join('')}
+    </div>
+  `;
+  content.appendChild(gallery);
+}
+
+function removePdfImage(idx) {
+  pdfImages.splice(idx, 1);
+  if (pdfImages.length === 0) document.getElementById('btn-clear-imgs').style.display = 'none';
+  renderPdfImages();
+}
+
+// ============================================================
 // SAVE / HISTORY
 // ============================================================
 // ============================================================
@@ -1640,7 +1706,7 @@ async function saveQuote() {
   // Validar vendedor obligatorio
   const vendedorVal = document.getElementById('f-vendedor').value.trim();
   if (!vendedorVal) {
-    toast('⚠ El campo Vendedor es obligatorio', '');
+    modalAlert('⚠ El campo Vendedor es obligatorio', 'error');
     document.getElementById('f-vendedor').focus();
     document.getElementById('f-vendedor').style.borderColor = 'var(--danger)';
     setTimeout(() => document.getElementById('f-vendedor').style.borderColor = '', 2000);
@@ -1672,29 +1738,37 @@ async function saveQuote() {
 
   try {
     if (currentFirebaseId) {
-      // Ya existe — actualizar el documento existente
       await window._fbUpdateDoc(window._fbDoc(window._db, 'cotizaciones', currentFirebaseId), quote);
       toast('✓ Cotización actualizada en la nube', 'success');
     } else {
-      // Nueva cotización
-      quote.id     = 'COT-' + String(quoteCounter).padStart(4, '0');
+      const counterRef = window._fbDoc(window._db, 'config', 'counter');
+      let newNumber;
+      await window._fbRunTransaction(window._db, async (transaction) => {
+        const counterDoc = await transaction.get(counterRef);
+        if (!counterDoc.exists()) {
+          newNumber = 1;
+          transaction.set(counterRef, { value: 2 });
+        } else {
+          newNumber = (counterDoc.data().value || 1);
+          transaction.update(counterRef, { value: newNumber + 1 });
+        }
+      });
+      quote.id     = 'COT-' + String(newNumber).padStart(4, '0');
       quote.estado = 'borrador';
       const ref = await window._fbAddDoc(window._fbCollection(window._db, 'cotizaciones'), quote);
       currentFirebaseId = ref.id;
-      quoteCounter++;
-      localStorage.setItem('piola-counter', quoteCounter);
-      document.getElementById('display-id').textContent = 'COT-' + String(quoteCounter).padStart(4,'0');
+      document.getElementById('display-id').textContent = quote.id;
       toast('✓ Cotización ' + quote.id + ' guardada en la nube', 'success');
     }
   } catch(e) {
-    toast('Error al guardar: ' + e.message, '');
+    modalAlert('Error al guardar: ' + e.message, 'error');
   }
 }
 
 async function updateEstado(firebaseId, nuevoEstado) {
   try {
     await window._fbUpdateDoc(window._fbDoc(window._db, 'cotizaciones', firebaseId), { estado: nuevoEstado });
-  } catch(e) { toast('Error: ' + e.message, ''); }
+  } catch(e) { modalAlert('Error: ' + e.message, 'error'); }
 }
 
 async function deleteQuote(firebaseId, cotId) {
@@ -1702,7 +1776,7 @@ async function deleteQuote(firebaseId, cotId) {
   try {
     await window._fbDeleteDoc(window._fbDoc(window._db, 'cotizaciones', firebaseId));
     toast('Cotización eliminada', '');
-  } catch(e) { toast('Error: ' + e.message, ''); }
+  } catch(e) { modalAlert('Error: ' + e.message, 'error'); }
 }
 
 function renderHistorial() {
@@ -1761,7 +1835,7 @@ function renderHistorial() {
 
 function loadQuote(firebaseId) {
   const q = (window._quotesDB || {})[firebaseId];
-  if (!q) { toast('No se encontró la cotización', ''); return; }
+  if (!q) { modalAlert('No se encontró la cotización', 'error'); return; }
   currentFirebaseId = firebaseId; // guardar para poder actualizar
   items = JSON.parse(JSON.stringify(q.items));
   items.forEach(i => {
@@ -1794,7 +1868,7 @@ function nuevaCotizacion() {
   document.getElementById('f-cliente').value  = '';
   document.getElementById('f-proyecto').value = '';
   document.getElementById('f-vendedor').value = '';
-  document.getElementById('display-id').textContent = 'COT-' + String(quoteCounter).padStart(4,'0');
+  document.getElementById('display-id').textContent = 'COT-????';
   recalcAll();
   toast('Nueva cotización lista', '');
 }
