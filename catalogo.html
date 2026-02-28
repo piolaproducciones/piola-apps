@@ -595,13 +595,18 @@ function initCatalog() {
     }
   );
 
-  // Load movimientos
+  // Load movimientos — sin orderBy compuesto para no requerir índice en Firebase
   window._fbOnSnapshot(
-    window._fbQuery(window._fbCollection(window._db, 'movimientos'), window._fbOrderBy('fecha', 'desc'), window._fbOrderBy('createdAt', 'desc')),
+    window._fbCollection(window._db, 'movimientos'),
     snap => {
       movimientosDB = {};
       snap.forEach(d => movimientosDB[d.id] = { id: d.id, ...d.data() });
       renderMovimientos();
+    },
+    err => {
+      console.error('movimientos listener error:', err);
+      const el = document.getElementById('mov-loading');
+      if (el) el.style.display = 'none';
     }
   );
 
